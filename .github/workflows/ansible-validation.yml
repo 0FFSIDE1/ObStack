@@ -7,12 +7,22 @@ on:
       - "ansible/**"
       - ".ansible-lint"
       - "compose.yaml"
+      - "alertmanager/**"
+      - "blackbox/**"
+      - "grafana/**"
+      - "loki/**"
+      - "prometheus/**"
       - "nginx/**"
       - ".github/workflows/ansible-validation.yml"
   pull_request:
     paths:
       - "ansible/**"
       - "compose.yaml"
+      - "alertmanager/**"
+      - "blackbox/**"
+      - "grafana/**"
+      - "loki/**"
+      - "prometheus/**"
       - "nginx/**"
       - ".github/workflows/ansible-validation.yml"
   workflow_dispatch:
@@ -53,6 +63,27 @@ jobs:
           GRAFANA_ADMIN_USER=ci GRAFANA_ADMIN_PASSWORD=ci-validation-placeholder-password \
           NGINX_BIND_ADDRESS=127.0.0.1 NGINX_AUTH_GID=20000 \
           docker compose -f compose.yaml config --quiet
+      - name: Validate Prometheus, Alertmanager, Loki, Blackbox and Grafana configs
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$PWD/prometheus:/etc/prometheus:ro" prom/prometheus:v3.7.3 promtool check config /etc/prometheus/prometheus.yml
+          docker run --rm -v "$PWD/prometheus:/etc/prometheus:ro" prom/prometheus:v3.7.3 promtool check rules /etc/prometheus/rules/platform.yml
+          docker run --rm --entrypoint amtool -v "$PWD/alertmanager:/etc/alertmanager:ro" prom/alertmanager:v0.28.1 check-config /etc/alertmanager/alertmanager.yml
+          docker run --rm -v "$PWD/loki/config.yml:/etc/loki/config.yml:ro" grafana/loki:3.5.7 -config.file=/etc/loki/config.yml -verify-config
+          docker run --rm -v "$PWD/blackbox/config.yml:/etc/blackbox_exporter/config.yml:ro" prom/blackbox-exporter:v0.27.0 --config.file=/etc/blackbox_exporter/config.yml --config.check
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import yaml
+
+          for path in Path("grafana/provisioning").rglob("*.yml"):
+              yaml.safe_load(path.read_text())
+          for path in Path("grafana/provisioning").rglob("*.yaml"):
+              yaml.safe_load(path.read_text())
+          for path in Path("grafana/provisioning").rglob("*.json"):
+              json.loads(path.read_text())
+          print("Grafana provisioning YAML and dashboard JSON are valid.")
+          PY
       - name: Validate Nginx configuration
         run: |
           set -euo pipefail
