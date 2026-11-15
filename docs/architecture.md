@@ -5,13 +5,14 @@ The repository default branch (`main`) currently contains only `README.md`, `.gi
 ### Central host facts supplied by the user
 
 - Candidate OS: Ubuntu 22, 24, or 26 (exact release not yet selected).
-- Resources: 2 vCPU, 2 GB RAM, 8–14 GB disk.
+- Initial resources are fixed for now: 2 vCPU, 2 GB RAM, 8–14 GB disk. User says the host could be increased later.
 - Docker Engine: not installed.
+- Requested retention: metrics 30 days; logs 20 days.
 - These are user-provided intended specifications, not independently verified host facts.
 
-**Sizing assessment:** this is severely constrained for a full centralized stack with persistent metrics and logs. In particular, 8–14 GB disk cannot reasonably accommodate OS/Docker image layers, Prometheus TSDB, Loki data/index/compaction, Grafana/Alertmanager state, and useful retention/backups with safe headroom. 2 GB RAM also leaves little room for the complete set of services and ingestion/query peaks. Treat this host as a lab/minimal proof-of-concept, not production-grade capacity, unless scope and telemetry retention are drastically reduced and carefully measured.
+**Capacity assessment:** the initial host is severely constrained for a centralized observability platform. The 8–14 GB disk must also accommodate OS, Docker image layers, persistent service state, indexes/compaction, and operational headroom; it is unlikely to support meaningful telemetry volume with the requested retention safely. 2 GB RAM limits the number of services and ingest/query headroom. Therefore, treat the initial deployment as a tightly scoped pilot / low-volume MVP, not production-capacity assurance. Retention goals must be validated against measured ingest rates and disk usage; configure hard storage limits, capacity alerts, and a documented degradation/scale-up procedure. Do not silently shorten retention: if the capacity budget is exceeded, alert and require an explicit policy decision or host expansion.
 
-**Recommended planning baseline (engineering estimate, not vendor minimum):** Ubuntu 24.04 LTS, at least 4 vCPU, 8 GB RAM, and 100 GB SSD for a modest initial fleet; adjust disk sizing using expected series count, scrape interval, log GB/day, retention, and backup policy. A larger fleet or meaningful log volume may require considerably more storage and RAM. Ubuntu 24.04 LTS is preferred over interim release selection for the initial stable deployment; verify support lifecycle and package availability during implementation.
+**Scale-up path (engineering guidance, not vendor minimum):** first consider increasing disk to a dedicated SSD sized from measured daily metrics/log ingestion and retention plus OS, indexes, compaction, backup, and safety headroom; then increase RAM/CPU based on service utilization and query/ingest load. A planning baseline of 4 vCPU, 8 GB RAM, and 100 GB SSD may suit a modest initial fleet, but is not a guarantee and should be recalculated from observed telemetry. Prefer Ubuntu 24.04 LTS for initial stable deployment; verify support lifecycle and package availability during implementation.
 
 The deployment environment is otherwise **not yet discovered**. Docker/Compose versions, hostnames/DNS, network/VPN topology, firewall policy, TLS issuer, secrets backend, backup target, and target project/server inventory remain unknown. These must not be assumed.
 ## 2. Proposed logical architecture
@@ -57,24 +58,24 @@ Required low-cardinality identity labels: `project`, `environment`, `server`, `i
 
 ## 6. Retention and resilience direction
 
-Proposed starting defaults subject to policy and capacity: Prometheus 90 days; Loki 30 days. Explicit storage limits and capacity alerts are required. Retention does not guarantee deletion from backups.
+User-requested retention targets: **Prometheus metrics 30 days; Loki logs 20 days**. These targets are not yet capacity-validated against the fixed initial 2 vCPU / 2 GB RAM / 8–14 GB disk host. Implementation must configure retention explicitly, enforce storage caps, and alert on disk usage, ingestion, and service resource pressure. Estimate capacity from observed metrics TSDB growth and log GB/day; include indexes, compaction, image/OS footprint, backup requirements, and safe free-space headroom. Record measured retention behavior in staging/pilot and raise a scale-up recommendation before disk pressure jeopardizes data or service availability. Do not claim the requested retention is guaranteed until measured.
 
-Initial single central node with local persistent storage and encrypted off-host backups is **not high availability**. Future path: object storage, scalable Loki, Prometheus-compatible long-term storage such as Mimir, redundant infrastructure and independent uptime monitoring.
+Initial single central node with local persistent storage and encrypted off-host backups is **not high availability**. Backup destination, backup retention, RPO/RTO, and restoration test remain undecided. Future path: object storage, scalable Loki, Prometheus-compatible long-term storage such as Mimir, redundant infrastructure and independent uptime monitoring.
 
 ## 7. Deployment constraints
 
-Use Ansible for repeatable idempotent provisioning. Do not modify production hosts or application configs without explicit authorization and verified inventory. Do not assume Terraform exists. Pin images and maintain upgrade/rollback procedures. Validate with upstream tools and record actual test results only.
+Use Ansible for repeatable idempotent provisioning. Do not modify production hosts or application configs without explicit authorization and verified inventory. Do not assume Terraform exists. Pin images and maintain upgrade/rollback procedures. Validate with upstream tools and record actual test results only. Initial resource constraints require service/resource limits and conservative component scope, followed by measured scale-up when needed.
 
 ## 8. Decisions required
 
-1. Confirm OS release and whether to resize the central host to the recommended planning baseline.
+1. Confirm exact Ubuntu release and available disk size (8 vs 14 GB); host expansion is possible but not currently approved/specified.
 2. Remote Linux distributions and first project/server/service inventory.
 3. VPN/network topology, allowed peers, firewall owner and telemetry endpoint reachability.
 4. DNS and TLS issuer/renewal.
 5. Authentication, secrets backend, RBAC and MFA expectations.
 6. Notification destinations and routing owners.
 7. Backup destination, encryption/key custody, retention, RPO/RTO.
-8. Telemetry volume, data classification/privacy, and retention approval.
+8. Telemetry volume, data classification/privacy, and retention approval (30-day metrics / 20-day logs are user requested; capacity validation pending).
 9. Existing Ansible/Terraform conventions and change authorization boundaries.
 10. Approval for implementation; no production changes implied.
 
@@ -82,7 +83,7 @@ Use Ansible for repeatable idempotent provisioning. Do not modify production hos
 
 - Network/firewall plan reviewed.
 - Secrets and TLS validated.
-- Storage/resource sizing matches expected telemetry.
+- Storage/resource sizing reconciled with observed telemetry volume and target retention; explicit capacity alerting enabled.
 - Retention/privacy approved.
 - Secure remote ingestion tested in staging.
 - Backup restoration demonstrated.
