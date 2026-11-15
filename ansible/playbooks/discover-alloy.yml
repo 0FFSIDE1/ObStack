@@ -1,0 +1,37 @@
+---
+# Read-only: never installs, stops, restarts, or reconfigures containers.
+- name: Discover existing Alloy and Docker runtime
+  hosts: monitored
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Check Docker CLI
+      ansible.builtin.command: command -v docker
+      register: docker_cli
+      changed_when: false
+      failed_when: false
+    - name: List running containers without environment values
+      ansible.builtin.command:
+        argv: [docker, ps, --no-trunc, --format, "{{'{{'}}.ID{{'}}'}}|{{'{{'}}.Names{{'}}'}}|{{'{{'}}.Image{{'}}'}}|{{'{{'}}.Status{{'}}'}}"]
+      register: docker_ps
+      changed_when: false
+      when: docker_cli.rc == 0
+    - name: Identify Alloy candidates
+      ansible.builtin.set_fact:
+        obstack_alloy_ids: "{{ (docker_ps.stdout_lines | default([])) | select('search', '(?i)(grafana/alloy|alloy)') | map('regex_replace', '^([^|]+)\\|.*$', '\\1') | list }}"
+    - name: Inspect candidate metadata without environment values
+      ansible.builtin.command:
+        argv:
+          - docker
+          - inspect
+          - --format
+          - "name={{'{{'}}.Name{{'}}'}} image={{'{{'}}.Config.Image{{'}}'}} state={{'{{'}}.State.Status{{'}}'}} restart={{'{{'}}.HostConfig.RestartPolicy.Name{{'}}'}} mounts={{'{{'}}range .Mounts{{'}}'}}{{'{{'}}.Source{{'}}'}}:{{'{{'}}.Destination{{'}}'}}:{{'{{'}}.RW{{'}}'}};{{'{{'}}end{{'}}'}} labels={{'{{'}}json .Config.Labels{{'}}'}} networks={{'{{'}}range $name, $network := .NetworkSettings.Networks{{'}}'}}{{'{{'}}$name{{'}}'}};{{'{{'}}end{{'}}'}}"
+          - "{{ item }}"
+      loop: "{{ obstack_alloy_ids | default([]) }}"
+      register: alloy_inspect
+      changed_when: false
+      when: docker_cli.rc == 0
+    - name: Report discovered container metadata
+      ansible.builtin.debug:
+        var: alloy_inspect.results
+      when: docker_cli.rc == 0
