@@ -16,6 +16,7 @@ on:
       - "nginx/**"
       - ".github/workflows/ansible-validation.yml"
       - ".github/workflows/wireguard-preflight-approval.yml"
+      - ".github/workflows/release.yml"
   pull_request:
     paths:
       - "ansible/**"
