@@ -70,8 +70,10 @@
 
 ## Phase 7 — Security and compliance
 
-- [ ] Threat model, secrets policy, network assessment, hardening review, CIS assessment and vulnerability scanning.
-- [ ] ISO/IEC 27002:2022 control mapping with objective, evidence, verification, status, gaps and organizational responsibilities.
+- [x] Add initial design-level threat model with assets, trust boundaries, threat scenarios, current controls and staging acceptance gates.
+- [ ] Approve organizational secrets policy, complete network/hardening review, CIS assessment and vulnerability scanning; deployed controls and runtime evidence are not yet verified.
+- [x] Create a preliminary scoped ISO/IEC 27002:2022 mapping with control objective paraphrases, repository evidence, verification methods, partial/pending status and responsibility gaps.
+- [ ] Confirm applicability and owners and gather current organizational/runtime evidence; this preliminary map is not a compliance assertion.
 - [ ] Privacy/logging review and retention/deletion policy.
 - [ ] Review the single Loki tenant model before multi-project/customer isolation requirements are introduced.
 
@@ -92,7 +94,7 @@
 
 - [x] Document authenticated telemetry paths, credential model, CA distribution, WireGuard routing policy and rollout sequence in docs/telemetry-ingestion.md.
 - [ ] Document certificate renewal/rotation, peer revocation, backup recovery, RPO/RTO and DR procedures.
-- [ ] Resource sizing and required ports, network diagram and failure-mode guidance.
+- [x] Document the initial Compose resource ceilings, required ports and ingress policy, logical network diagram and failure-mode guide in docs/operations/ports-capacity-failure-modes.md.
 - [ ] RPO/RTO and backup retention approved and restoration rehearsed.
 
 ## Phase 10 — Final review and readiness
