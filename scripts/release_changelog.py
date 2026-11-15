@@ -41,7 +41,7 @@ def release_notes(changelog: str, version: str) -> str:
         for line in body
         if re.match(r"^\s*-\s+", line)
     ]
-    meaningful = [item for item in bullets if item.lower() not in PLACEHOLDERS]
+    meaningful = [\n        item for item in bullets\n        if item.lower() not in PLACEHOLDERS\n        and "add changelog entries here" not in item.lower()\n        and item != "..."\n    ]
     if not meaningful:
         raise ValueError(f"Changelog entry for {version} must contain at least one meaningful bullet.")
 
