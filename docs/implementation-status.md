@@ -1,36 +1,37 @@
 # ObStack implementation status
 
-**Branch:** `codex/phase-1-discovery-architecture`  
-**Status:** Initial configuration scaffold committed; validation and deployment remain pending.
+**Branch:** codex/phase-1-discovery-architecture  
+**Status:** Initial stack plus first-pass WireGuard and Alloy automation committed; validation and deployment remain pending.
 
 ## Implemented in repository
 
 - ARM64-pinned central Compose services: Prometheus, Loki, Grafana, Alertmanager and Blackbox Exporter.
-- Loopback-only host port bindings; no observability service is intentionally exposed to the public interface.
-- Prometheus 30-day time retention with a 3 GB TSDB size cap.
-- Loki 20-day retention configuration using local filesystem storage and TSDB schema v13.
-- Grafana datasource provisioning and anonymous access/signup disabled.
-- Conservative baseline alert rules and Blackbox probe modules.
-- Secret-free `.env.example`.
-- Ansible project defaults, example inventory, and a read-only Ubuntu 24.04 / architecture preflight playbook.
+- Loopback-only host port bindings; observability services are not intentionally exposed publicly.
+- Prometheus 30-day time retention with a 3 GB TSDB size cap; Loki 20-day retention.
+- Grafana datasource provisioning, conservative alert rules and Blackbox probe modules.
+- Secret-free example environment and Ansible inventory.
+- Read-only Ubuntu/architecture preflight.
+- Read-only Docker/Alloy discovery that avoids container environment variables and secret values.
+- First-pass native WireGuard hub/spoke Ansible role and explicitly gated mutating playbook.
+- Alloy onboarding role with preserve-by-default policy, HTTPS/TLS verification and password-file support. It stages config/secrets only and does not restart or replace existing containers.
 
 ## Not yet implemented or validated
 
-- WireGuard hub/peer roles and final overlay/VPC CIDR selection.
-- Authenticated remote telemetry ingress over WireGuard; current central services bind only to loopback.
-- Remote Alloy installation/configuration and host-specific collection policies.
-- Nginx TLS, DNS, identity/RBAC design and certificate lifecycle.
-- Notification receiver credentials and delivery tests.
-- Dashboard set, application/database exporters and project inventory.
+- Final VPC/overlay CIDR, real host inventory, public keys and Ansible Vault secrets.
+- WireGuard role syntax/runtime validation, firewall/security-group changes and pilot handshakes.
+- Central authenticated TLS ingress and Prometheus remote-write receiver enablement.
+- Host-specific Compose adoption for existing Alloy containers; config/secret/CA/host metric mounts.
+- Actual log sources (Docker socket, journald or files) per server.
+- Remote telemetry acceptance and authentication tests.
+- DNS/certificate lifecycle, dashboards, exporters, alert notification endpoints.
 - Backup/restore, off-host storage, RPO/RTO and DR tests.
-- ISO/IEC 27002:2022 evidence/control mapping and security review.
-- CI validation against pinned image manifests and native ARM64 runtime.
-- Capacity validation against actual ingestion volume.
+- ISO/IEC 27002:2022 evidence mapping, security review, CI and native ARM64 runtime validation.
+- Capacity validation against measured ingestion volume.
 
 ## Safety and capacity
 
-This repository work does not create AWS resources, associate the Elastic IP, install packages, create WireGuard keys, alter security groups, change firewall rules, or contact/configure the ten remote production servers.
+Repository work has not created AWS resources, associated the Elastic IP, installed packages, generated production keys, changed security groups/firewalls, contacted or modified production servers, or restarted any containers.
 
-The initial 2 vCPU / 2 GB RAM / 14 GB disk host is a constrained pilot target. Compose memory/CPU limits are provisional guardrails, not proof the full stack will fit. The Prometheus 3 GB TSDB cap and Loki retention period do not guarantee that the full requested retention is achievable; measure ingestion and disk growth before production use. Loki filesystem storage is single-node and not highly available.
+The central 2 vCPU / 2 GB RAM / 14 GB disk host remains a constrained pilot target. Compose limits are provisional. Prometheus's 3 GB cap and Loki's 20-day retention do not guarantee requested retention; measure ingestion and disk growth. Loki filesystem storage is single-node.
 
-The Compose file deliberately binds published ports to 127.0.0.1. Do not change these bindings to 0.0.0.0. A separately reviewed WireGuard-bound authenticated TLS ingress design is required before remote telemetry is enabled.
+Prometheus, Loki, Grafana, Alertmanager and Blackbox ports remain bound to loopback. Do not expose them publicly. Remote Alloy must not be enabled until the WireGuard path and authenticated TLS ingress are implemented and tested.
