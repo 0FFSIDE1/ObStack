@@ -53,9 +53,11 @@
       no_log: true
   roles:
     - central_base
+    - host_security
     - docker
     - certificates
     - central_stack
+    - certificate_renewal
   post_tasks:
     - name: Verify Compose service health and startup state
       ansible.builtin.command: docker compose ps --all

@@ -1,0 +1,19 @@
+---
+- name: Validate and reload SSH
+  ansible.builtin.command: /usr/sbin/sshd -t
+  changed_when: false
+  notify: Reload SSH daemon
+
+- name: Reload SSH daemon
+  ansible.builtin.systemd:
+    name: ssh
+    state: reloaded
+
+- name: Restart auditd
+  ansible.builtin.systemd:
+    name: auditd
+    state: restarted
+
+- name: Load ObStack audit rules
+  ansible.builtin.command: augenrules --load
+  changed_when: true
