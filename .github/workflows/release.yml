@@ -58,6 +58,20 @@ jobs:
       - name: Validate pending notes
         run: python scripts/release_changelog.py "${{ github.ref_name }}" --output "${{ runner.temp }}/release-notes.md"
 
+  promotion-token-validation:
+    name: Validate release automation token
+    needs: verify-release-branch
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Require release automation token
+        env:
+          AUTOMATION_TOKEN: ${{ secrets.OBSTACK_RELEASE_AUTOMATION_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$AUTOMATION_TOKEN" || { echo "::error::Missing repository secret OBSTACK_RELEASE_AUTOMATION_TOKEN. It must permit contents and pull-request writes."; exit 1; }
+
   config-validation:
     name: Configuration validation (required)
     needs: verify-release-branch
@@ -73,9 +87,10 @@ jobs:
     needs:
       - verify-release-branch
       - pending-release-validation
+      - promotion-token-validation
       - config-validation
       - ansible-validation
-    if: ${{ needs.verify-release-branch.result == 'success' && needs.pending-release-validation.result == 'success' && needs.config-validation.result == 'success' && needs.ansible-validation.result == 'success' }}
+    if: ${{ needs.verify-release-branch.result == 'success' && needs.pending-release-validation.result == 'success' && needs.promotion-token-validation.result == 'success' && needs.config-validation.result == 'success' && needs.ansible-validation.result == 'success' }}
     runs-on: ubuntu-latest
     environment: production
     permissions:
@@ -164,7 +179,7 @@ jobs:
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
-          token: ${{ github.token }}
+          token: ${{ secrets.OBSTACK_RELEASE_AUTOMATION_TOKEN }}
       - name: Configure Git identity
         run: |
           git config user.name "github-actions[bot]"
@@ -183,7 +198,7 @@ jobs:
           git push --force-with-lease origin "$PROMOTION_BRANCH"
       - name: Open changelog promotion PR
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.OBSTACK_RELEASE_AUTOMATION_TOKEN }}
           RELEASE_TAG: ${{ github.ref_name }}
           PROMOTION_BRANCH: automation/changelog-promotion-${{ github.ref_name }}
         run: |
