@@ -3,6 +3,8 @@
 - name: Collect local network facts from ObStack fleet
   hosts: wireguard
   gather_facts: false
+  vars:
+    obstack_cidr_discovery_dir: "{{ playbook_dir }}/../tmp/network-discovery"
   pre_tasks:
     - name: Create controller discovery directory before remote records are written
       ansible.builtin.file:
@@ -110,8 +112,8 @@
               '--approved-vpc-cidr', obstack_approved_vpc_cidr,
               '--output', obstack_cidr_output
             ]
-            + (obstack_home_office_vpn_cidrs | default([]) | map('regex_replace', '^(.*)$', '--vpn-cidr=\\1') | list)
-            + (obstack_candidate_overlay_cidrs | map('regex_replace', '^(.*)$', '--candidate=\\1') | list)
+            + (obstack_home_office_vpn_cidrs | default([]) | map('regex_replace', '^', '--vpn-cidr=') | list)
+            + (obstack_candidate_overlay_cidrs | map('regex_replace', '^', '--candidate=') | list)
           }}
       changed_when: true
 
