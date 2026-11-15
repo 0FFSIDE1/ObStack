@@ -60,11 +60,19 @@
       ClientAliveCountMax 2
   notify: Validate and reload SSH
 
-- name: Allow SSH before enabling UFW
+- name: Require a known administrator source CIDR before enabling the host firewall
+  ansible.builtin.assert:
+    that:
+      - obstack_ssh_allowed_cidr | default('') | length > 0
+      - obstack_ssh_allowed_cidr is ansible.utils.ipv4
+    fail_msg: "Set obstack_ssh_allowed_cidr to the verified administrator public IPv4 CIDR before enabling UFW."
+
+- name: Allow SSH from the approved administrator source only
   community.general.ufw:
     rule: allow
     port: "{{ obstack_admin_ssh_port }}"
     proto: tcp
+    from_ip: "{{ obstack_ssh_allowed_cidr }}"
 
 - name: Allow WireGuard hub UDP
   community.general.ufw:
