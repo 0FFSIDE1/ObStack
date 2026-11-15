@@ -9,8 +9,8 @@ import re
 import sys
 from pathlib import Path
 
-VERSION_RE = re.compile(r"^v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$")
-ENTRY_RE = re.compile(r"^## \\[(v\\d+\\.\\d+\\.\\d+)\\] - (\\d{4}-\\d{2}-\\d{2})\\s*$")
+VERSION_RE = re.compile(r"^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
+ENTRY_RE = re.compile(r"^## \[(v\d+\.\d+\.\d+)\] - (\d{4}-\d{2}-\d{2})\s*$")
 PLACEHOLDERS = {"tbd", "todo", "placeholder", "no changes", "n/a"}
 
 
@@ -46,7 +46,7 @@ def release_notes(changelog: str, version: str) -> str:
     bullets = [
         line.strip()[2:].strip()
         for line in section[1:]
-        if re.match(r"^\\s*-\\s+", line)
+        if re.match(r"^\s*-\s+", line)
     ]
     meaningful = [
         item
@@ -58,7 +58,7 @@ def release_notes(changelog: str, version: str) -> str:
     if not meaningful:
         raise ValueError(f"Changelog entry for {version} must contain at least one meaningful bullet.")
 
-    return "\\n".join(section).strip() + "\\n"
+    return "\n".join(section).strip() + "\n"
 
 
 def main() -> int:
