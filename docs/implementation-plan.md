@@ -64,7 +64,8 @@
 - [x] Baseline platform alerts for scrape-target down, Prometheus config reload failure and TSDB storage-cap thresholds.
 - [ ] Reusable infrastructure, Docker, application, database, telemetry, security/operations and backup alert rules; host/application metric sources and thresholds are not yet established.
 - [x] Alertmanager grouping by alert name, project, environment and server; severity inhibition for critical over warning is configured.
-- [ ] Complete severity/project/environment/service routing, templates and configurable notification receivers. The default receiver currently acts as a sink until the user selects notification destination(s).
+- [x] Add an optional HTTPS webhook receiver controlled by OBSTACK_ALERTMANAGER_WEBHOOK_URL from the Ansible controller environment; render its configuration to a protected file and validate both sink and webhook modes in CI.
+- [ ] Complete destination-specific routing/templates (for example Telegram, SMTP, Slack) and set an approved actual endpoint. With the variable unset, the default receiver intentionally remains a non-delivery sink.
 - [ ] Firing/resolved delivery tests; thresholds documented and configurable.
 
 ## Phase 7 — Security and compliance
