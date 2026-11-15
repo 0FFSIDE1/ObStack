@@ -90,7 +90,7 @@
       ansible.builtin.uri:
         url: "https://{{ obstack_wg_vpn_ip }}/api/v1/write"
         method: GET
-        url_username: "{{ hostvars[groups['monitored'][0]].obstack_alloy_metrics_username | default('obstack-' ~ groups['monitored'][0] ~ '-metrics') }}"
+        url_username: "obstack-{{ groups['monitored'][0] }}-metrics"
         url_password: "{{ hostvars[groups['monitored'][0]].obstack_alloy_metrics_password }}"
         force_basic_auth: true
         ca_path: /etc/obstack/pki/ca.crt
@@ -103,7 +103,7 @@
       ansible.builtin.uri:
         url: "https://{{ obstack_wg_vpn_ip }}/loki/api/v1/push"
         method: GET
-        url_username: "{{ hostvars[groups['monitored'][0]].obstack_alloy_logs_username | default('obstack-' ~ groups['monitored'][0] ~ '-logs') }}"
+        url_username: "obstack-{{ groups['monitored'][0] }}-logs"
         url_password: "{{ hostvars[groups['monitored'][0]].obstack_alloy_logs_password }}"
         force_basic_auth: true
         ca_path: /etc/obstack/pki/ca.crt
