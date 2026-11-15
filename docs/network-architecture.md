@@ -17,7 +17,11 @@ AWS security-group UDP 51820 ingress should be restricted to the ten verified st
 
 WireGuard encrypts the transport but is not service authentication. Alloy must send metrics and logs to authenticated HTTPS endpoints with CA verification enabled. No insecure_skip_verify workaround is allowed. Central listeners must be reachable only over the WireGuard interface or a tightly restricted private ingress, never exposed as unauthenticated public services.
 
-The existing Compose services bind to loopback. A separately reviewed central TLS/authentication ingress must proxy to Prometheus remote-write and Loki push. Prometheus must explicitly enable its remote-write receiver. Loki tenant authentication must be configured and validated. The TLS certificate SANs must match the names configured in Alloy.
+The Compose stack includes a hardened Nginx container as the HTTPS reverse-proxy edge. During bootstrap it binds only to host loopback port 8443; after the WireGuard hub is provisioned and verified, bind it to the hub's WireGuard IPv4 address and keep public TCP 443 closed. Nginx currently proxies the Grafana UI only. Prometheus remote-write and Loki push routes must be added with endpoint-specific authentication before Alloy can send telemetry. Prometheus must explicitly enable its remote-write receiver. Loki tenant authentication must be configured and validated. The TLS certificate SANs must match the names configured in Alloy.
+
+## Host time
+
+The central Ubuntu host timezone is set to `Africa/Lagos`. Chrony maintains system clock synchronization; telemetry timestamps should remain UTC-normalized across services and hosts to avoid ambiguity during cross-region correlation. Docker containers retain their image defaults (normally UTC) unless deliberately configured otherwise.
 
 ## Repository automation
 
