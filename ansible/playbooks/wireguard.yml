@@ -1,0 +1,23 @@
+---
+- name: Configure ObStack WireGuard hub and spokes
+  hosts: wireguard
+  become: true
+  gather_facts: true
+  pre_tasks:
+    - name: Require explicit production authorization
+      ansible.builtin.assert:
+        that: [obstack_apply | default(false) | bool]
+        fail_msg: "Set obstack_apply=true only after review and explicit change approval."
+    - name: Validate per-host key and address inputs
+      ansible.builtin.assert:
+        that:
+          - obstack_wg_address | default('') | length > 0
+          - obstack_wg_private_key | default('') | length > 0
+          - obstack_wg_public_key | default('') | length > 0
+        fail_msg: "Supply a unique per-host keypair and reviewed overlay address; private keys belong in Ansible Vault."
+    - name: Validate spoke hub endpoint
+      ansible.builtin.assert:
+        that: [obstack_wg_endpoint | default('') | length > 0]
+      when: "'monitored' in group_names"
+  roles:
+    - wireguard
