@@ -61,6 +61,10 @@
       WantedBy=timers.target
   notify: Reload systemd and enable certificate renewal timer
 
+- name: Validate certificate renewal script syntax
+  ansible.builtin.command: bash -n /usr/local/sbin/obstack-renew-central-cert
+  changed_when: false
+
 - name: Enable and start certificate renewal timer
   ansible.builtin.systemd:
     name: obstack-cert-renew.timer

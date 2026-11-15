@@ -10,10 +10,5 @@
     state: reloaded
 
 - name: Restart auditd
-  ansible.builtin.systemd:
-    name: auditd
-    state: restarted
-
-- name: Load ObStack audit rules
-  ansible.builtin.command: augenrules --load
+  ansible.builtin.command: service auditd restart
   changed_when: true

@@ -1,7 +1,20 @@
 ---
+- name: Require a non-root Ansible SSH login identity
+  ansible.builtin.assert:
+    that:
+      - ansible_user is defined
+      - ansible_user | length > 0
+      - ansible_user != "root"
+    fail_msg: "Connect with a named non-root administrator account; direct root SSH is disabled."
+
+- name: Resolve the Ansible SSH login user's home directory
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ ansible_user }}"
+
 - name: Verify the active Ansible login already has a public-key login path
   ansible.builtin.stat:
-    path: "{{ ansible_facts['user_dir'] }}/.ssh/authorized_keys"
+    path: "{{ getent_passwd[ansible_user][4] }}/.ssh/authorized_keys"
   register: obstack_admin_authorized_keys
 
 - name: Refuse to disable password authentication without an installed SSH key
@@ -124,3 +137,20 @@
 - name: Load persistent ObStack audit rules immediately
   ansible.builtin.command: augenrules --load
   changed_when: false
+
+- name: Configure bounded rotation for sudo command logs
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/obstack-sudo
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      /var/log/sudo/commands.log {
+          daily
+          rotate 7
+          compress
+          delaycompress
+          missingok
+          notifempty
+          create 0600 root root
+      }
