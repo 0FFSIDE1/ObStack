@@ -86,3 +86,30 @@
   retries: 12
   delay: 5
   until: grafana_ready.status == 200
+
+- name: Wait for Loki readiness
+  ansible.builtin.uri:
+    url: http://127.0.0.1:3100/ready
+    status_code: 200
+  register: loki_ready
+  retries: 12
+  delay: 5
+  until: loki_ready.status == 200
+
+- name: Wait for Alertmanager readiness
+  ansible.builtin.uri:
+    url: http://127.0.0.1:9093/-/ready
+    status_code: 200
+  register: alertmanager_ready
+  retries: 12
+  delay: 5
+  until: alertmanager_ready.status == 200
+
+- name: Wait for Blackbox Exporter health
+  ansible.builtin.uri:
+    url: http://127.0.0.1:9115/-/healthy
+    status_code: 200
+  register: blackbox_ready
+  retries: 12
+  delay: 5
+  until: blackbox_ready.status == 200
