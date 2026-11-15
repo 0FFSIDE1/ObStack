@@ -1,0 +1,46 @@
+---
+- name: Provision and deploy the ObStack central host
+  hosts: observability
+  become: true
+  gather_facts: true
+  serial: 1
+  pre_tasks:
+    - name: Require explicit authorization for central-host changes
+      ansible.builtin.assert:
+        that:
+          - obstack_apply | default(false) | bool
+        fail_msg: "This playbook changes the central host. Review the plan, then pass -e obstack_apply=true during an approved change window."
+    - name: Require the intended Ubuntu release and ARM64 architecture
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == "Ubuntu"
+          - ansible_distribution_version == "24.04"
+          - ansible_architecture == "aarch64"
+        fail_msg: "The central host must be Ubuntu 24.04 LTS on ARM64."
+    - name: Require an approved WireGuard address for certificate SAN
+      ansible.builtin.assert:
+        that:
+          - obstack_wg_vpn_ip | default('') | length > 0
+          - obstack_wg_vpn_ip is ansible.utils.ipv4
+        fail_msg: "Set obstack_wg_vpn_ip to the approved central WireGuard IPv4 address."
+    - name: Require vaulted Grafana administrator credentials
+      ansible.builtin.assert:
+        that:
+          - obstack_grafana_admin_user | default('') | length > 0
+          - obstack_grafana_admin_password | default('') | length >= 24
+        fail_msg: "Set obstack_grafana_admin_user and a 24+ character obstack_grafana_admin_password in Ansible Vault."
+  roles:
+    - central_base
+    - docker
+    - certificates
+    - central_stack
+  post_tasks:
+    - name: Verify Compose service health and startup state
+      ansible.builtin.command: docker compose ps --all
+      args:
+        chdir: "{{ obstack_install_dir }}"
+      register: obstack_compose_status
+      changed_when: false
+    - name: Display service status
+      ansible.builtin.debug:
+        var: obstack_compose_status.stdout_lines
