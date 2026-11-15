@@ -7,7 +7,7 @@
 - [x] Inspect linked GitHub repository `0FFSIDE1/ObStack` on default branch `main`.
 - [x] Record current repository baseline and gaps.
 - [x] Draft logical architecture, telemetry flows, trust boundaries, label contract, assumptions and decision list in `docs/architecture.md`.
-- [x] Record user-provided initial central resources (2 vCPU / 2 GB RAM / 8–14 GB disk, fixed for now but potentially expandable) and retention goals (30 days metrics / 20 days logs); actual host state and capacity validation remain pending.
+- [x] Record user-provided initial central resources (AWS EC2 2 vCPU / 2 GB RAM / 14 GB disk, fixed for now but potentially expandable) and retention goals (30 days metrics / 20 days logs); actual host state and capacity validation remain pending.
 - [ ] Confirm exact central/remote OS, networking, TLS/DNS, secrets, backups, projects and data-volume expectations.
 - [ ] Review and approve architecture.
 
