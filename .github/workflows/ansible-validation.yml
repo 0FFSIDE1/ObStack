@@ -5,6 +5,7 @@ on:
     branches: ["**"]
     paths:
       - "ansible/**"
+      - "ansible.cfg"
       - "compose.yaml"
       - "nginx/**"
       - ".github/workflows/ansible-validation.yml"
