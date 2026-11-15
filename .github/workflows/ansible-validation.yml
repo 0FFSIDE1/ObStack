@@ -68,7 +68,18 @@ jobs:
             -v /tmp/obstack-nginx/tls/central.key:/etc/nginx/tls/central.key:ro \
             -v /tmp/obstack-nginx/auth:/etc/nginx/auth:ro \
             nginx:1.28.0 -c 'test -r /etc/nginx/tls/central.key && test -r /etc/nginx/auth/metrics.htpasswd && test -r /etc/nginx/auth/logs.htpasswd'
-          docker run --rm --user 101:20000 --cap-add NET_BIND_SERVICE --tmpfs /var/run:mode=1777 --tmpfs /var/cache/nginx:mode=1777 --entrypoint nginx \
+          docker network create obstack-nginx-ci
+          cleanup() {
+            docker rm -f obstack-ci-prometheus obstack-ci-loki obstack-ci-grafana >/dev/null 2>&1 || true
+            docker network rm obstack-nginx-ci >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          # Nginx resolves named upstreams while loading the configuration.
+          # Lightweight placeholders provide CI-only DNS names; no traffic is sent to them.
+          docker run -d --name obstack-ci-prometheus --network obstack-nginx-ci nginx:1.28.0
+          docker run -d --name obstack-ci-loki --network obstack-nginx-ci nginx:1.28.0
+          docker run -d --name obstack-ci-grafana --network obstack-nginx-ci nginx:1.28.0
+          docker run --rm --network obstack-nginx-ci --user 101:20000 --cap-add NET_BIND_SERVICE --tmpfs /var/run:mode=1777 --tmpfs /var/cache/nginx:mode=1777 --entrypoint nginx \
             -v "$PWD/nginx/conf.d:/etc/nginx/conf.d:ro" \
             -v /tmp/obstack-nginx/tls/central.crt:/etc/nginx/tls/central.crt:ro \
             -v /tmp/obstack-nginx/tls/central.key:/etc/nginx/tls/central.key:ro \
