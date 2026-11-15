@@ -4,7 +4,7 @@
 **Decision owner:** User  
 **Workload classification:** Non-commercial (user-confirmed)  
 **Scope:** One central AWS EC2 observability host and ten Ubuntu 24.04 LTS remote servers (5 AMD64, 5 ARM64).  
-**Central endpoint:** AWS Elastic IP is user-confirmed; the literal address has not been supplied or recorded. All ten remote servers have public IPv4 addresses (user-confirmed); whether those addresses are static or dynamic is not yet known.
+**Central endpoint:** AWS Elastic IP is user-confirmed; the literal address has not been supplied or recorded. All ten remote servers have public IPv4 addresses (user-confirmed); the user has confirmed these addresses are static and do not change; the literal addresses still need to be collected and verified.
 
 ## 1. Decision
 
@@ -63,7 +63,7 @@ Peer restrictions:
 ## 4. AWS and host firewall policy
 
 1. Retrieve and verify the existing Elastic IP allocation and association with the central EC2 instance; record it in deployment inventory/configuration (not as a guessed value). No additional Elastic IP allocation is currently required.
-2. Permit inbound UDP 51820 in the hub's AWS Security Group. All ten remote servers have public IPv4 addresses, but their stability is not yet confirmed. Since each spoke initiates an outbound tunnel, no inbound WireGuard rule is needed on the remote hosts. If all remote public egress IPv4 addresses are confirmed static, restrict hub UDP 51820 ingress to those ten /32 source addresses (or the smallest verified ranges). If any are dynamic, use an appropriately broader source range for UDP 51820 and rely on WireGuard's cryptographic peer authentication; do not mistake public IPv4 availability for static addressing.
+2. Permit inbound UDP 51820 in the hub's AWS Security Group. All ten remote servers have static public IPv4 addresses (user-confirmed). Since each spoke initiates an outbound tunnel, no inbound WireGuard rule is needed on the remote hosts. Restrict hub AWS Security Group UDP 51820 ingress to the ten verified /32 source addresses (or smallest verified egress ranges). Collect the literal addresses and verify that AWS sees those same source addresses before applying the rule; do not invent or infer them.
 3. Do not add public inbound rules for Prometheus 9090, Loki 3100, Grafana 3000, Node Exporter 9100, cAdvisor or other exporter ports.
 4. On the hub, permit only required telemetry and management flows on the WireGuard interface. Remote peers should not gain general host or container-network access.
 5. On remote hosts, allow outbound UDP to the hub endpoint; no public inbound WireGuard port is required for the spoke-initiated topology.
@@ -112,7 +112,7 @@ WireGuard encrypts the network path but does not replace service authentication,
 
 - Actual central EC2 instance type, kernel architecture, and exact Elastic IP value/association (Elastic IP existence is user-confirmed).
 - AWS VPC CIDR and remote network CIDRs; confirmation the proposed VPN range is non-overlapping.
-- Per-host names, architecture, project/environment mapping, confirmation whether each public IPv4 egress address is static or dynamic, and ownership.
+- Per-host names, architecture, project/environment mapping, the literal static public IPv4 egress address, and ownership.
 - UDP egress policy and AWS Security Group/firewall change authority.
 - Private DNS and TLS certificate/CA approach; telemetry endpoint authentication.
 - Secret storage, key custody, backup destination, RPO/RTO and recovery owner.
