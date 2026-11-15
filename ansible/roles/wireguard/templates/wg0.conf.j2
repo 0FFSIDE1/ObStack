@@ -21,6 +21,6 @@ AllowedIPs = {{ h.obstack_wg_vpn_ip }}/32
 # ObStack hub
 PublicKey = {{ hostvars[groups[obstack_wg_hub_group][0]].obstack_wg_public_key }}
 Endpoint = {{ obstack_wg_endpoint }}
-AllowedIPs = {{ obstack_wg_hub_allowed_ip }}
+AllowedIPs = {{ hostvars[groups[obstack_wg_hub_group][0]].obstack_wg_vpn_ip }}/32
 PersistentKeepalive = {{ obstack_wg_keepalive }}
 {% endif %}
