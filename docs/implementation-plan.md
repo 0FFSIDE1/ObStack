@@ -13,6 +13,7 @@
 - [x] Record initial monitoring scope as approximately 5–10 projects and 10 remote servers; project names, project-to-server mapping, environments, and workload inventory remain pending.
 - [x] Record all ten remote servers as Ubuntu 24.04 LTS: 5 AMD64 (`amd64`) and 5 ARM64 (`arm64`); per-host architecture mapping remains pending.
 - [x] Record the user's network decision: self-managed WireGuard, non-commercial workloads; no VPN has been installed and no production hosts have been changed.
+- [ ] Confirm remote network CIDRs and any office/home/existing VPN ranges; select AWS VPC CIDR/subnets and WireGuard overlay before provisioning. The user confirmed the AWS VPC and EC2 instance have not yet been created.
 - [ ] Confirm remote OS, networking, TLS/DNS, secrets, backups, projects and data-volume expectations.
 - [ ] Review and approve architecture.
 
@@ -22,8 +23,8 @@
 - [x] Define architecture requirements: central stack images must support `linux/arm64`; remote agent/exporter artifacts must support both `linux/arm64` and `linux/amd64`, select architecture-specific binaries safely, and validate all required architectures before fleet rollout.
 - [ ] Confirm staging environment and production-change authorization boundary.
 - [x] Document selected WireGuard hub-and-spoke topology, provisional address plan, peer isolation, NAT keepalive, firewall/security-group requirements, secrets handling and failure modes in docs/network-architecture.md.
-- [ ] Confirm proposed VPN CIDR (10.77.0.0/24) does not overlap the AWS VPC, remote site networks or existing VPNs.
-- [x] Confirm central EC2 has an AWS Elastic IP (user-confirmed; exact address and association still need verification during deployment discovery).
+- [ ] Before AWS provisioning, select a VPC CIDR/subnet layout and verify it against all remote/site, office/home and existing VPN ranges; then select/confirm a non-overlapping WireGuard overlay (currently proposed as 10.77.0.0/24). No VPC or EC2 exists yet, so there is no current VPC CIDR to retrieve.
+- [x] Record that an AWS Elastic IP is available/exists (user-confirmed); the VPC and EC2 have not yet been created, so no association with the future hub exists yet. Verify allocation, region and ownership, then associate it during approved provisioning.
 - [x] Confirm all ten remote servers have static public IPv4 addresses that do not change (user-confirmed); collecting and verifying the literal addresses remains pending.
 - [ ] Confirm AWS Security Group ownership, UDP 51820 ingress policy and remote egress UDP policy; collect and verify all ten static remote public IPv4 addresses before narrowing the hub source allowlist to /32 entries.
 - [ ] Build authoritative host inventory for all 10 servers: hostname, public endpoint if static, project/environment, architecture, assigned VPN /32, owner and maintenance window.
