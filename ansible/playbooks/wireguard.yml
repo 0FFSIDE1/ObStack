@@ -6,18 +6,21 @@
   pre_tasks:
     - name: Require explicit production authorization
       ansible.builtin.assert:
-        that: [obstack_apply | default(false) | bool]
+        that:
+          - obstack_apply | default(false) | bool
         fail_msg: "Set obstack_apply=true only after review and explicit change approval."
-    - name: Validate per-host key and address inputs
+    - name: Validate per-host key and address inputs from controller environment
       ansible.builtin.assert:
         that:
           - obstack_wg_address | default('') | length > 0
           - obstack_wg_private_key | default('') | length > 0
           - obstack_wg_public_key | default('') | length > 0
-        fail_msg: "Supply a unique per-host keypair and reviewed overlay address; private keys belong in Ansible Vault."
+        fail_msg: "Supply a unique per-host keypair and reviewed overlay address; private keys must be exported as OBSTACK_WG_PRIVATE_KEY_<HOST>."
+      no_log: true
     - name: Validate spoke hub endpoint
       ansible.builtin.assert:
-        that: [obstack_wg_endpoint | default('') | length > 0]
+        that:
+          - obstack_wg_endpoint | default('') | length > 0
       when: "'monitored' in group_names"
   roles:
     - wireguard
