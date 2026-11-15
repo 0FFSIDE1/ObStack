@@ -23,7 +23,7 @@ permissions:
 
 jobs:
   validate:
-    name: Syntax, lint and Compose validation
+    name: Syntax, lint, Compose and Nginx validation
     runs-on: ubuntu-latest
     env:
       ANSIBLE_CONFIG: ${{ github.workspace }}/ansible.cfg
@@ -55,3 +55,20 @@ jobs:
 
       - name: Validate Compose manifest
         run: GRAFANA_ADMIN_USER=ci GRAFANA_ADMIN_PASSWORD=ci-validation-placeholder-password NGINX_BIND_ADDRESS=127.0.0.1 docker compose -f compose.yaml config --quiet
+
+      - name: Validate Nginx configuration
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/obstack-nginx/tls /tmp/obstack-nginx/auth
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -keyout /tmp/obstack-nginx/tls/central.key \
+            -out /tmp/obstack-nginx/tls/central.crt \
+            -subj "/CN=obstack-ci"
+          touch /tmp/obstack-nginx/auth/metrics.htpasswd
+          touch /tmp/obstack-nginx/auth/logs.htpasswd
+          docker run --rm --entrypoint nginx \
+            -v "$PWD/nginx/conf.d:/etc/nginx/conf.d:ro" \
+            -v /tmp/obstack-nginx/tls/central.crt:/etc/nginx/tls/central.crt:ro \
+            -v /tmp/obstack-nginx/tls/central.key:/etc/nginx/tls/central.key:ro \
+            -v /tmp/obstack-nginx/auth:/etc/nginx/auth:ro \
+            nginx:1.28.0 -t
