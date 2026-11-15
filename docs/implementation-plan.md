@@ -96,6 +96,20 @@
 - [ ] Resolve safely actionable findings and report residual risks.
 - [ ] Production readiness decision only after all critical validation gates pass and required external dependencies are verified.
 
+## Initial repository implementation progress (2026-11-15)
+
+- [x] Add ARM64-targeted central Compose configuration for Prometheus, Loki, Grafana, Alertmanager and Blackbox Exporter; published ports bind to loopback only.
+- [x] Configure requested Prometheus 30-day time retention (with a 3 GB size cap) and Loki 20-day retention; actual retention remains capacity-dependent and unverified.
+- [x] Add Prometheus baseline rules, Blackbox modules, Alertmanager baseline routing and Grafana datasource provisioning.
+- [x] Add secret-free environment and Ansible inventory examples plus read-only Ubuntu 24.04 / architecture preflight.
+- [x] Add GitHub Actions configuration-validation workflow for Compose, Prometheus, Alertmanager and Loki.
+- [ ] Obtain successful CI run and review any validation findings.
+- [ ] Implement WireGuard roles and authenticated TLS remote-ingestion endpoints after VPC/overlay, DNS and certificate decisions.
+- [ ] Implement remote Alloy configuration and controlled ARM64/AMD64 pilot onboarding.
+- [ ] Complete security, backup/restore, ISO evidence mapping and measured capacity validation.
+
+The Compose resource ceilings were set conservatively for the initial 2 vCPU / 2 GB host, but are provisional. They are not a capacity guarantee and must be tuned from measured runtime behavior.
+
 ## Rollback approach
 
 - Keep changes isolated on a feature branch and review via pull request.
