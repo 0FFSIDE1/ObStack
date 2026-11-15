@@ -68,7 +68,11 @@ jobs:
           touch /tmp/obstack-nginx/auth/logs.htpasswd
           chgrp 20000 /tmp/obstack-nginx/tls/central.key /tmp/obstack-nginx/auth/metrics.htpasswd /tmp/obstack-nginx/auth/logs.htpasswd
           chmod 0640 /tmp/obstack-nginx/tls/central.key /tmp/obstack-nginx/auth/metrics.htpasswd /tmp/obstack-nginx/auth/logs.htpasswd
-          docker run --rm --entrypoint nginx \
+          docker run --rm --user 101:20000 --entrypoint sh \
+            -v /tmp/obstack-nginx/tls/central.key:/etc/nginx/tls/central.key:ro \
+            -v /tmp/obstack-nginx/auth:/etc/nginx/auth:ro \
+            nginx:1.28.0 -c 'test -r /etc/nginx/tls/central.key && test -r /etc/nginx/auth/metrics.htpasswd && test -r /etc/nginx/auth/logs.htpasswd'
+          docker run --rm --user 101:20000 --cap-add NET_BIND_SERVICE --tmpfs /var/run:mode=1777 --tmpfs /var/cache/nginx:mode=1777 --entrypoint nginx \
             -v "$PWD/nginx/conf.d:/etc/nginx/conf.d:ro" \
             -v /tmp/obstack-nginx/tls/central.crt:/etc/nginx/tls/central.crt:ro \
             -v /tmp/obstack-nginx/tls/central.key:/etc/nginx/tls/central.key:ro \
