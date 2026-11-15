@@ -58,6 +58,33 @@ jobs:
           done
       - name: Run Ansible Lint
         run: ansible-lint --profile basic ansible/
+      - name: Validate Alertmanager template in sink and webhook modes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from jinja2 import Environment
+          import yaml
+
+          template = Environment(autoescape=False).from_string(
+              Path("alertmanager/alertmanager.yml.j2").read_text()
+          )
+          cases = {
+              "sink": "",
+              "webhook": "https://hooks.example.invalid/obstack-ci",
+          }
+          for name, url in cases.items():
+              rendered = template.render(obstack_alertmanager_webhook_url=url)
+              parsed = yaml.safe_load(rendered)
+              assert parsed["route"]["receiver"] == ("obstack-webhook" if url else "default-sink")
+              if url:
+                  receiver = next(item for item in parsed["receivers"] if item["name"] == "obstack-webhook")
+                  assert receiver["webhook_configs"][0]["url"] == url
+              output = Path(f"/tmp/alertmanager-{name}.yml")
+              output.write_text(rendered)
+              print(f"Rendered Alertmanager template mode: {name}")
+          PY
+          docker run --rm --entrypoint amtool -v /tmp/alertmanager-sink.yml:/tmp/config.yml:ro prom/alertmanager:v0.28.1 check-config /tmp/config.yml
+          docker run --rm --entrypoint amtool -v /tmp/alertmanager-webhook.yml:/tmp/config.yml:ro prom/alertmanager:v0.28.1 check-config /tmp/config.yml
       - name: Validate Compose manifest
         run: |
           GRAFANA_ADMIN_USER=ci GRAFANA_ADMIN_PASSWORD=ci-validation-placeholder-password \
