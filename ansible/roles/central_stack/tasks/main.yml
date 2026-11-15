@@ -19,7 +19,7 @@
     path: /etc/obstack/secrets/metrics.htpasswd
     state: touch
     owner: root
-    group: "101"
+    group: obstack-nginx
     mode: "0640"
     modification_time: preserve
     access_time: preserve
@@ -29,7 +29,7 @@
     path: /etc/obstack/secrets/logs.htpasswd
     state: touch
     owner: root
-    group: "101"
+    group: obstack-nginx
     mode: "0640"
     modification_time: preserve
     access_time: preserve
@@ -53,7 +53,7 @@
     crypt_scheme: bcrypt
     state: present
     owner: root
-    group: "101"
+    group: obstack-nginx
     mode: "0640"
   loop: "{{ groups['monitored'] | default([]) }}"
   no_log: true
@@ -66,7 +66,7 @@
     crypt_scheme: bcrypt
     state: present
     owner: root
-    group: "101"
+    group: obstack-nginx
     mode: "0640"
   loop: "{{ groups['monitored'] | default([]) }}"
   no_log: true
@@ -116,12 +116,13 @@
   ansible.builtin.copy:
     dest: "{{ obstack_install_dir }}/.env"
     owner: root
-    group: "101"
+    group: obstack-nginx
     mode: "0640"
     content: |
       GRAFANA_ADMIN_USER={{ obstack_grafana_admin_user }}
       GRAFANA_ADMIN_PASSWORD={{ obstack_grafana_admin_password }}
       NGINX_BIND_ADDRESS={{ obstack_nginx_bind_address | default('127.0.0.1') }}
+      NGINX_AUTH_GID={{ obstack_nginx_auth_gid }}
   no_log: true
 
 - name: Validate rendered Compose configuration
