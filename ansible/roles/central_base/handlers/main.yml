@@ -4,12 +4,8 @@
     name: fail2ban
     state: restarted
 
-- name: Validate and reload SSH
-  ansible.builtin.command: sshd -t
-  changed_when: false
-  notify: Reload SSH
-
-- name: Reload SSH
-  ansible.builtin.systemd:
-    name: ssh
-    state: reloaded
+- name: Validate SSH configuration and reload
+  ansible.builtin.shell: "sshd -t && systemctl reload ssh"
+  args:
+    executable: /bin/bash
+  changed_when: true
