@@ -1,74 +1,66 @@
 # ObStack — Phased Implementation Plan
 
-**Status:** Draft pending environment discovery and architecture approval. This plan is not evidence of completed implementation or tests.
+**Status:** Implementation work in progress; architecture decisions and production prerequisites remain subject to explicit approval. This plan is not evidence of a completed deployment or successful runtime tests.
 
 ## Phase 1 — Discovery and architecture
 
-- [x] Inspect linked GitHub repository `0FFSIDE1/ObStack` on default branch `main`.
+- [x] Inspect linked GitHub repository 0FFSIDE1/ObStack on default branch main.
 - [x] Record current repository baseline and gaps.
-- [x] Draft logical architecture, telemetry flows, trust boundaries, label contract, assumptions and decision list in `docs/architecture.md`.
-- [x] Record user-provided initial central resources (AWS EC2 2 vCPU / 2 GB RAM / 14 GB disk, fixed for now but potentially expandable) and retention goals (30 days metrics / 20 days logs); actual host state and capacity validation remain pending.
-- [x] Record user-confirmed central OS as Ubuntu 24.04 LTS; host state remains unverified.
-- [x] Record central EC2 architecture as ARM64 / AWS Graviton (user-confirmed; verify actual instance type and host architecture before installation).
-- [x] Record initial monitoring scope as approximately 5–10 projects and 10 remote servers; project names, project-to-server mapping, environments, and workload inventory remain pending.
-- [x] Record all ten remote servers as Ubuntu 24.04 LTS: 5 AMD64 (`amd64`) and 5 ARM64 (`arm64`); per-host architecture mapping remains pending.
-- [x] Record the user's network decision: self-managed WireGuard, non-commercial workloads; no VPN has been installed and no production hosts have been changed.
-- [x] Record that all ten remote servers are standalone public-facing servers (user-confirmed); no site-to-site/private remote network routing is required in the initial design. Still inspect host-local routes and Docker bridge ranges during onboarding.
-- [ ] Confirm any office/home/existing VPN ranges; select AWS VPC CIDR/subnets and WireGuard overlay before provisioning. The user confirmed the AWS VPC and EC2 instance have not yet been created.
-- [ ] Confirm remote OS, networking, TLS/DNS, secrets, backups, projects and data-volume expectations.
-- [ ] Review and approve architecture.
+- [x] Draft logical architecture, telemetry flows, trust boundaries, label contract, assumptions and decision list in docs/architecture.md.
+- [x] Record central resources (AWS EC2 2 vCPU / 2 GB RAM / 14 GB disk), Ubuntu 24.04 LTS ARM64 and requested retention (30 days metrics / 20 days logs); actual host state and capacity validation remain pending.
+- [x] Record remote fleet as Ubuntu 24.04 LTS with AMD64 and ARM64 hosts; per-host mapping remains pending.
+- [x] Record selected self-managed WireGuard, non-commercial workload and hub-and-spoke topology; no VPN has been installed and no production hosts have been changed.
+- [ ] Confirm VPC CIDR/subnets and verify no overlap with office/home/existing VPN and remote Docker bridge routes.
+- [ ] Collect current pilot host inventory, project/environment mapping, static public IPs, SSH access and existing Alloy ownership.
+- [ ] Review and approve architecture and production-change boundary.
 
 ## Phase 2 — Implementation plan and safe boundaries
 
-- [x] Define phases, dependencies and validation gates in this document.
-- [x] Define architecture requirements: central stack images must support `linux/arm64`; remote agent/exporter artifacts must support both `linux/arm64` and `linux/amd64`, select architecture-specific binaries safely, and validate all required architectures before fleet rollout.
-- [ ] Confirm staging environment and production-change authorization boundary.
-- [x] Document selected WireGuard hub-and-spoke topology, provisional address plan, peer isolation, NAT keepalive, firewall/security-group requirements, secrets handling and failure modes in docs/network-architecture.md.
-- [ ] Before AWS provisioning, select a VPC CIDR/subnet layout and verify it against office/home and existing VPN ranges; inspect remote hosts' local routes and Docker bridge ranges during onboarding, then select/confirm a non-overlapping WireGuard overlay (currently proposed as 10.77.0.0/24). No VPC or EC2 exists yet, so there is no current VPC CIDR to retrieve.
-- [x] Record that an AWS Elastic IP is available/exists (user-confirmed); the VPC and EC2 have not yet been created, so no association with the future hub exists yet. Verify allocation, region and ownership, then associate it during approved provisioning.
-- [x] Confirm all ten remote servers have static public IPv4 addresses that do not change (user-confirmed); collecting and verifying the literal addresses remains pending.
-- [ ] Confirm AWS Security Group ownership, UDP 51820 ingress policy and remote egress UDP policy; collect and verify all ten static remote public IPv4 addresses before narrowing the hub source allowlist to /32 entries.
-- [ ] Build authoritative host inventory for all 10 servers: hostname, public endpoint if static, project/environment, architecture, assigned VPN /32, owner and maintenance window.
-- [ ] Approve private telemetry ingress design (VPN-bound service listener or authenticated TLS reverse proxy); keep Prometheus/Loki/exporters off public interfaces.
-- [ ] Define peer key generation, secure distribution, storage, rotation and revocation; ensure no private keys enter Git.
-- [ ] Choose exact supported upstream image versions and record upgrade strategy after compatibility/security review; verify multi-platform manifests and pin immutable digests where possible.
+- [x] Define phases, dependencies and validation gates.
+- [x] Document WireGuard hub-and-spoke topology, provisional address plan, peer isolation, NAT keepalive, firewall/security-group requirements, secrets handling and failure modes.
+- [x] Record that the existing Elastic IP is available but not associated with an EC2 instance; verify allocation, region and ownership during AWS provisioning.
+- [x] Record remote servers have static public IPv4 addresses; collect and verify literal addresses before narrowing UDP ingress allowlists.
+- [ ] Approve final VPC CIDR and WireGuard overlay after route-overlap checks; the proposed 10.77.0.0/24 remains provisional.
+- [ ] Confirm AWS Security Group ownership, UDP 51820 ingress policy and remote egress policy.
+- [ ] Define peer key generation, secure distribution, storage, rotation and revocation; private keys must never enter Git.
+- [ ] Choose exact supported upstream image versions and record upgrade strategy after compatibility/security review.
 
 ## Phase 3 — Central platform
 
 - [x] Compose stack: Nginx reverse proxy, Prometheus, Grafana, Loki, Alertmanager and Blackbox Exporter; constrain scope/resources for the initial small ARM64 host.
-- [ ] Persistent volumes, dedicated networks, health checks, resource controls and hardening.
-- [ ] Prometheus scrape/remote-write receiver config and rule groups; configure 30-day metrics retention and validate TSDB growth.
-- [ ] Loki auth, retention/compaction and storage limits; configure 20-day log retention and measure actual daily ingest/index footprint.
-- [ ] Establish host/disk/service capacity alerting, safe free-space headroom, and explicit scale-up/degradation runbook. Requested retention is a target, not guaranteed until telemetry volume is measured.
-- [ ] Grafana datasources, global/project dashboard provisioning and RBAC.
-- [x] Dockerized Nginx TLS reverse proxy for Grafana, loopback-bound during bootstrap; WireGuard-only listener binding and certificate lifecycle hardening remain.
-- [ ] Configuration validation using official tooling; confirm every central image has a linux/arm64 manifest.
+- [x] Persistent volumes, dedicated network, health checks and conservative resource controls.
+- [x] Prometheus remote-write receiver enabled explicitly; 30-day time retention and 3 GB TSDB cap configured, with actual retention subject to measured capacity.
+- [x] Loki authentication enabled, 20-day retention/compaction configured, and single-node obstack tenant assigned by the authenticated Nginx route.
+- [x] Nginx TLS routes for Prometheus remote-write and Loki push with separate per-host Basic Auth files; Grafana remains behind the same TLS proxy.
+- [x] Per-host bcrypt htpasswd provisioning from Ansible Vault; backend service ports remain loopback-only.
+- [ ] Establish host/disk/service capacity alerting, safe free-space headroom and scale-up/degradation runbook.
+- [ ] Grafana RBAC, project dashboard provisioning and application-specific observability.
 
 ## Phase 4 — Remote agent and exporter patterns
 
-- [ ] Alloy metrics/log pipelines with authenticated TLS forwarding and retries/buffering appropriate to supported components; verify agent release support on ARM64 and AMD64.
-- [ ] Node Exporter and cAdvisor with documented host mounts and least privilege; validate binaries/images for both architectures.
-- [ ] Optional PostgreSQL/MySQL/Redis/Nginx/process exporters only for applicable workloads; confirm each selected exporter supports each deployed architecture.
-- [ ] Application instrumentation examples for FastAPI, Laravel, Nginx, PostgreSQL and Redis.
-- [ ] Label normalization, sensitive-log filtering/redaction, and cardinality policy tests.
-- [ ] Run representative ARM64 and AMD64 staging onboarding and integration tests before fleet-wide rollout.
+- [x] Alloy metrics/log endpoints use HTTPS, per-host Basic Auth and CA verification; credentials are staged as password files, not embedded in Alloy config.
+- [x] Alloy endpoint defaults use the central WireGuard IP and the matching private-CA certificate trust path.
+- [ ] Complete host-specific Compose adoption for existing Alloy containers, including read-only CA and password-file mounts.
+- [ ] Select actual log sources (Docker socket, journald or files) per server after read-only discovery.
+- [ ] Node Exporter/cAdvisor and optional application/database exporters with architecture checks for AMD64 and ARM64.
+- [ ] Label normalization, sensitive-log filtering/redaction and cardinality policy tests.
+- [ ] Run representative AMD64 and ARM64 staging onboarding and integration tests before fleet rollout.
 
 ## Phase 5 — Ansible automation
 
 - [x] Central inventory variable example, controller collection requirements and first-pass common/security/Docker/certificate/central-stack roles.
-- [ ] Complete Nginx ingress, backup, validation roles, and wireguard_hub/wireguard_peers roles.
-- [ ] Inventory architecture facts and normalized architecture variables; fail safely on unsupported architectures rather than downloading the wrong binary. Enforce ARM64-compatible artifacts for central deployment.
-- [x] First-pass central deployment playbook for baseline host hardening, Africa/Lagos timezone, Docker installation, private CA/server certificate generation, Docker Nginx TLS reverse proxy, Compose deployment/startup and service readiness checks (not yet syntax-checked or run).
-- [x] GitHub Actions workflow for Ansible syntax checks, Ansible Lint and Compose configuration validation.
-- [ ] WireGuard hub provisioning, remote peer onboarding/update/removal, exporter enablement, validation and agent removal playbooks.
-- [ ] Enforce least-privilege peer AllowedIPs; one unique /32 per remote; no full-tunnel or remote-to-remote routing by default.
-- [ ] Ensure private keys are generated/stored securely and never committed; support peer revocation and rotation.
-- [ ] Idempotency/syntax/lint checks; avoid unnecessary application config changes.
+- [x] Central deployment playbook for Ubuntu 24.04 ARM64, Africa/Lagos timezone, security baseline, Docker, private CA/server certificate, Docker Nginx TLS reverse proxy, Compose startup and service readiness checks; execution remains pending.
+- [x] WireGuard hub/spoke role with inventory/key/address validation, unique peer /32 enforcement and explicit obstack_apply=true gate.
+- [x] Gated public CA distribution playbook; transfers only the CA certificate, never private keys.
+- [x] Read-only central validation playbook for Compose, service health, Prometheus receiver flag, TLS and endpoint authentication.
+- [x] GitHub Actions workflow for Ansible syntax, Ansible Lint, Compose rendering and Nginx syntax validation.
+- [ ] Obtain successful CI run and review all validation findings.
+- [ ] Complete peer rotation/revocation and host-specific Alloy container adoption procedures.
 
 ## Phase 6 — Alerting
 
 - [ ] Reusable infrastructure, Docker, application, database, telemetry, security/operations and backup alert rules.
-- [ ] Alertmanager grouping, severity/project/environment/service routing, inhibition, templates, and configurable Telegram/SMTP/Slack/webhook receivers.
+- [ ] Alertmanager grouping, severity/project/environment/service routing, inhibition, templates and configurable receivers.
 - [ ] Firing/resolved delivery tests; thresholds documented and configurable.
 
 ## Phase 7 — Security and compliance
@@ -76,20 +68,24 @@
 - [ ] Threat model, secrets policy, network assessment, hardening review, CIS assessment and vulnerability scanning.
 - [ ] ISO/IEC 27002:2022 control mapping with objective, evidence, verification, status, gaps and organizational responsibilities.
 - [ ] Privacy/logging review and retention/deletion policy.
+- [ ] Review the single Loki tenant model before multi-project/customer isolation requirements are introduced.
 
 ## Phase 8 — Testing and evidence
 
-- [ ] Compose, Prometheus, rules, Alertmanager, Loki, Alloy, Nginx, Grafana provisioning and Ansible validation.
+- [x] Add CI checks for Ansible syntax/lint, Compose rendering and Nginx configuration syntax.
+- [x] Add read-only central runtime validation for service readiness, TLS trust, Prometheus receiver and unauthenticated/authenticated route behavior.
+- [ ] Run CI and capture actual results; do not infer success from workflow configuration.
 - [ ] Integration checks: metrics/logs/query paths, labels, alert routes, persistent data, backup restore.
-- [ ] WireGuard tests: all ten peers connect; unique peer routes; no overlap; reboot/NAT reconnect; UDP reachability; unauthorized peer rejection; key revocation; telemetry endpoints inaccessible from public interfaces.
-- [ ] Architecture matrix checks: verify central ARM64 and remote ARM64/AMD64 image manifests, checksums, package availability and successful agent startup on all required architectures.
+- [ ] WireGuard tests: enrolled peers connect; unique routes; no overlap; reboot/NAT reconnect; UDP reachability; unauthorized peer rejection; key revocation; telemetry endpoints inaccessible from public interfaces.
+- [ ] Architecture matrix checks: central ARM64 and remote ARM64/AMD64 image manifests, checksums, package availability and successful agent startup.
 - [ ] Security checks: exposed ports, credentials, TLS verification, privileges/mounts, access controls, image vulnerabilities and log leakage.
 - [ ] Controlled staging failure simulation and recovery tests.
-- [ ] Produce evidence-based test report with actual command output and pass/fail statuses; no fabricated results.
+- [ ] Produce evidence-based test report with actual command output and pass/fail statuses.
 
 ## Phase 9 — Documentation and operations
 
-- [ ] Install/deploy/upgrade/rollback, WireGuard peer onboarding/removal/key rotation, alerting, dashboards, operations, troubleshooting, backup recovery and DR documentation.
+- [x] Document authenticated telemetry paths, credential model, CA distribution, WireGuard routing policy and rollout sequence in docs/telemetry-ingestion.md.
+- [ ] Document certificate renewal/rotation, peer revocation, backup recovery, RPO/RTO and DR procedures.
 - [ ] Resource sizing and required ports, network diagram and failure-mode guidance.
 - [ ] RPO/RTO and backup retention approved and restoration rehearsed.
 
@@ -99,25 +95,8 @@
 - [ ] Resolve safely actionable findings and report residual risks.
 - [ ] Production readiness decision only after all critical validation gates pass and required external dependencies are verified.
 
-## Initial repository implementation progress (2026-11-15)
+## Current rollout and safety constraints
 
-- [x] Add ARM64-targeted central Compose configuration for Prometheus, Loki, Grafana, Alertmanager and Blackbox Exporter; published ports bind to loopback only.
-- [x] Configure requested Prometheus 30-day time retention (with a 3 GB size cap) and Loki 20-day retention; actual retention remains capacity-dependent and unverified.
-- [x] Add Prometheus baseline rules, Blackbox modules, Alertmanager baseline routing and Grafana datasource provisioning.
-- [x] Add secret-free environment and Ansible inventory examples plus read-only Ubuntu 24.04 / architecture preflight.
-- [x] Add GitHub Actions configuration-validation workflow for Compose, Prometheus, Alertmanager and Loki.
-- [ ] Obtain successful CI run and review any validation findings.
-- [ ] Syntax-check and check-mode review the central provisioning playbook; run it only on the approved new central EC2 host after SSH/firewall rollback checks.
-- [ ] Implement WireGuard roles and authenticated TLS remote-ingestion endpoints after VPC/overlay, DNS and certificate decisions.
-- [ ] Implement remote Alloy configuration and controlled ARM64/AMD64 pilot onboarding.
-- [ ] Complete security, backup/restore, ISO evidence mapping and measured capacity validation.
+The initial rollout should begin with two pilot servers (one AMD64 and one ARM64 where practical), then expand in batches of three or four. The inventory and peer generation are fleet-size agnostic. The central 2 vCPU / 2 GB RAM / 14 GB disk host is a constrained pilot starting point, not a permanent ceiling. Retention goals are not guaranteed until measured ingestion and disk growth support them.
 
-The Compose resource ceilings were set conservatively for the initial 2 vCPU / 2 GB host, but are provisional. They are not a capacity guarantee and must be tuned from measured runtime behavior.
-
-## Rollback approach
-
-- Keep changes isolated on a feature branch and review via pull request.
-- For config changes, retain previous versioned configs and revert the branch/commit if validation or staging tests fail.
-- For central deployment, use a maintenance window, backup configuration and state before upgrades, validate the previous image/config versions are recoverable, and avoid destructive volume removal.
-- Remote onboarding/removal must be inventory-scoped and reviewed; no broad host targeting. Removal should disable telemetry and remove only observability-managed resources.
-- No production deployment or destructive operation is authorized by this plan.
+No AWS resource creation, Elastic IP association, security-group mutation, production host change, package installation, WireGuard key generation, CA private-key creation or container restart is authorized by repository work. Mutating Ansible playbooks require obstack_apply=true and separate explicit production approval.
