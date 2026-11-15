@@ -4,7 +4,7 @@ Centralized observability for multiple projects and remote Linux servers.
 
 ## Current implementation
 
-The initial repository implementation is on branch codex/phase-1-discovery-architecture.
+The initial repository implementation is on branch feat/phase-1-discovery-architecture.
 
 - Central Docker Compose stack: Prometheus, Loki, Grafana, Alertmanager, Blackbox Exporter and Dockerized Nginx.
 - Central images are pinned to ARM64 platform.
