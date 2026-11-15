@@ -22,6 +22,8 @@ all:
           obstack_wg_endpoint: REPLACE_WITH_CENTRAL_ELASTIC_IP_AND_UDP_51820
           project: REPLACE_WITH_PROJECT
           environment: production
+          obstack_server_role: server
+          obstack_region: REPLACE_WITH_REGION
     wireguard:
       children:
         observability:
