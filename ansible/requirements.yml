@@ -1,4 +1,6 @@
 ---
 collections:
+  # 13.5.1 explicitly supports ansible-core 2.18+.
   - name: community.general
+    version: "13.5.1"
   - name: ansible.utils
