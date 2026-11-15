@@ -11,7 +11,7 @@ Each remote host initiates an outbound WireGuard UDP tunnel to the future AWS hu
 
 The proposed overlay 10.77.0.0/24 and host mapping are provisional only. Check against the planned VPC CIDR, office/home/existing VPN routes and each server's local routes/Docker bridge networks before configuring. The remote hosts are standalone public-facing servers; no remote private subnet routing is required.
 
-AWS security-group UDP 51820 ingress should be restricted to the verified static public egress IPv4 /32 source addresses for currently enrolled spokes. Spokes require no inbound WireGuard port. Preserve existing SSH management access and validate host firewall/Docker forwarding behavior before changes.
+AWS security-group and central UFW UDP 51820 ingress must be restricted to the verified static public egress IPv4 /32 source addresses for currently enrolled spokes. Store the verified source separately as obstack_wg_peer_public_ip; do not assume the SSH management address is necessarily the observed tunnel source. Spokes require no inbound WireGuard port. Preserve existing SSH management access and validate host firewall/Docker forwarding behavior before changes.
 
 ## Telemetry security
 
