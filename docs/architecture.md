@@ -63,7 +63,7 @@ Alloy collects approved sources, filters/redacts secrets and unnecessary sensiti
 
 ### Alerting
 
-Prometheus rules -> Alertmanager -> configured Telegram, SMTP, Slack or webhook receivers. Credentials are runtime secrets/protected files. Firing/resolved routes and delivery must be tested.
+Prometheus rules -> Alertmanager -> configured Telegram, SMTP, Slack or webhook receivers. Credentials are runtime secrets/protected files. Firing/resolved routes and delivery must be tested. The repository currently supports an optional generic HTTPS webhook URL via the controller environment variable OBSTACK_ALERTMANAGER_WEBHOOK_URL; when it is unset, the Alertmanager default receiver is a sink and no notifications are delivered. Actual endpoint selection and end-to-end delivery tests remain prerequisites.
 
 ## 4. Multi-tenancy and label contract
 
