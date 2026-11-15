@@ -30,24 +30,25 @@
           - obstack_ssh_allowed_cidr | default('') | length > 0
           - obstack_ssh_allowed_cidr is ansible.utils.ipv4
         fail_msg: "Set obstack_wg_vpn_ip to the approved central WireGuard IPv4 address and obstack_ssh_allowed_cidr to the verified administrator IPv4 CIDR."
-    - name: Require vaulted Grafana administrator credentials
+    - name: Require Grafana administrator credentials from controller environment
       ansible.builtin.assert:
         that:
           - obstack_grafana_admin_user | default('') | length > 0
           - obstack_grafana_admin_password | default('') | length >= 24
-        fail_msg: "Set obstack_grafana_admin_user and a 24+ character obstack_grafana_admin_password in Ansible Vault."
+        fail_msg: "Export OBSTACK_GRAFANA_ADMIN_USER and a 24+ character OBSTACK_GRAFANA_ADMIN_PASSWORD in the Ansible controller environment."
+      no_log: true
     - name: Require verified static public egress IPv4 addresses for enrolled WireGuard spokes
       ansible.builtin.assert:
         that:
           - hostvars[item].obstack_wg_peer_public_ip | default('') is ansible.utils.ipv4
         fail_msg: "Set each enrolled host's obstack_wg_peer_public_ip to its verified static public egress IPv4 address."
       loop: "{{ groups['monitored'] | default([]) }}"
-    - name: Require vaulted per-host telemetry credentials for the enrolled fleet
+    - name: Require environment-backed per-host telemetry credentials
       ansible.builtin.assert:
         that:
           - hostvars[item].obstack_alloy_metrics_password | default('') | length >= 24
           - hostvars[item].obstack_alloy_logs_password | default('') | length >= 24
-        fail_msg: "Set unique 24+ character metrics and logs passwords for every enrolled host in Ansible Vault."
+        fail_msg: "Export unique 24+ character OBSTACK_ALLOY_METRICS_PASSWORD_<HOST> and OBSTACK_ALLOY_LOGS_PASSWORD_<HOST> values for every enrolled host."
       loop: "{{ groups['monitored'] | default([]) }}"
       no_log: true
   roles:
