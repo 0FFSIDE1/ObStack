@@ -1,0 +1,26 @@
+[Interface]
+Address = {{ obstack_wg_address }}
+PrivateKey = {{ obstack_wg_private_key }}
+{% if inventory_hostname in groups[obstack_wg_hub_group] %}
+ListenPort = {{ obstack_wg_port }}
+{% endif %}
+MTU = {{ obstack_wg_mtu }}
+{% if inventory_hostname in groups[obstack_wg_hub_group] %}
+{% for peer in groups[obstack_wg_spoke_group] %}
+{% set h = hostvars[peer] %}
+{% if h.obstack_wg_public_key is defined and h.obstack_wg_vpn_ip is defined %}
+[Peer]
+# {{ peer }}
+PublicKey = {{ h.obstack_wg_public_key }}
+AllowedIPs = {{ h.obstack_wg_vpn_ip }}/32
+
+{% endif %}
+{% endfor %}
+{% else %}
+[Peer]
+# ObStack hub
+PublicKey = {{ hostvars[groups[obstack_wg_hub_group][0]].obstack_wg_public_key }}
+Endpoint = {{ obstack_wg_endpoint }}
+AllowedIPs = {{ obstack_wg_hub_allowed_ip }}
+PersistentKeepalive = {{ obstack_wg_keepalive }}
+{% endif %}
