@@ -42,8 +42,9 @@ class ReleaseChangelogTests(unittest.TestCase):
             pending_notes(PENDING.replace("2026-11-15", "2026-13-45"), "v1.2.3")
 
     def test_rejects_placeholder_only_notes(self):
+        placeholder = PENDING.replace("- Add CIDR preflight reporting.", "- TBD").replace("- Fix config parsing.", "- TBD")
         with self.assertRaisesRegex(ValueError, "meaningful bullet"):
-            pending_notes(PENDING.replace("- Add CIDR preflight reporting.", "- TBD"), "v1.2.3")
+            pending_notes(placeholder, "v1.2.3")
 
     def test_promotes_notes_before_unreleased(self):
         _, notes = pending_notes(PENDING, "v1.2.3")
