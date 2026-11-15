@@ -14,7 +14,7 @@ Before running:
 - Put `obstack_grafana_admin_user` and a unique 24+ character `obstack_grafana_admin_password` in Ansible Vault. Never put secrets in plaintext inventory or Git.
 - Install controller collections: `ansible-galaxy collection install -r ansible/requirements.yml`.
 - The host timezone defaults to `Africa/Lagos`; chrony maintains clock synchronization. Container services retain their default UTC time unless explicitly configured otherwise.
-- Nginx is published on loopback port 8443 by default, so it is not remotely accessible during bootstrap. After WireGuard hub configuration is complete and verified, set `obstack_nginx_bind_address` to the hub's WireGuard IPv4 address to make HTTPS available only through the overlay. Keep AWS security-group TCP 443 closed to the public internet.
+- Nginx is published on loopback port 443 by default, so it is not remotely accessible during bootstrap. After WireGuard hub configuration is complete and verified, set `obstack_nginx_bind_address` to the hub's WireGuard IPv4 address to make HTTPS available only through the overlay. Keep AWS security-group TCP 443 closed to the public internet.
 - Check free disk space. The current 14 GB pilot disk is tight; this playbook does not resize EBS or guarantee requested retention.
 
 Syntax-check and inspect first:
