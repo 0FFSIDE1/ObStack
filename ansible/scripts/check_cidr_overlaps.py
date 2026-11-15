@@ -6,8 +6,7 @@ Input JSON schema:
   "networks": [{"name": "AWS VPC", "cidr": "10.0.0.0/16", "source": "AWS"}],
   "candidates": ["10.77.0.0/24", "172.30.240.0/24"]
 }
-The script never changes networking. It reports conflicts and a clean candidate,
-if any. Candidate selection is advisory and requires operator approval.
+Never changes networking. Candidate selection is advisory and requires operator approval.
 """
 import argparse
 import ipaddress
@@ -29,7 +28,6 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input_json", help="normalized discovery JSON file")
     args = parser.parse_args()
-
     with open(args.input_json, encoding="utf-8") as handle:
         payload = json.load(handle)
 
@@ -42,15 +40,12 @@ def main():
 
     candidates = [network(value, "candidate") for value in payload.get("candidates", [])]
     conflicts = []
-    for name, source, net in known:
-        for other_name, other_source, other_net in known:
-            if other_name <= name:
-                continue
+    for index, (name, source, net) in enumerate(known):
+        for other_name, other_source, other_net in known[index + 1:]:
             if net.overlaps(other_net):
                 conflicts.append((name, source, str(net), other_name, other_source, str(other_net)))
 
-    candidate_conflicts = []
-    clean = []
+    clean, candidate_conflicts = [], []
     for candidate in candidates:
         hits = [(name, source, str(net)) for name, source, net in known if candidate.overlaps(net)]
         if hits:
@@ -65,7 +60,7 @@ def main():
         for a, a_src, a_net, b, b_src, b_net in conflicts:
             print(f"  CONFLICT: {a} [{a_src}] {a_net} overlaps {b} [{b_src}] {b_net}")
     else:
-        print("\nNo overlaps found among the discovered network records.")
+        print("\nNo overlaps found among discovered network records.")
 
     if candidate_conflicts:
         print("\nCandidate WireGuard CIDRs rejected due to overlap:")
@@ -79,12 +74,10 @@ def main():
             print(f"  AVAILABLE: {cidr}")
         print(f"Suggested first candidate: {clean[0]} (requires human approval)")
     elif candidates:
-        print("\nNo candidate CIDR passed. Add reviewed candidate ranges and rerun.")
+        print("\nNo candidate CIDR passed. Add reviewed candidates and rerun.")
     else:
-        print("\nNo candidates supplied; discovery can report overlaps but cannot propose a CIDR.")
+        print("\nNo candidates supplied; overlap discovery only.")
 
-    # A conflict in discovered networks or no clean candidate is a nonzero result,
-    # allowing CI/preflight gates to stop safely.
     if conflicts or (candidates and not clean):
         return 2
     return 0
