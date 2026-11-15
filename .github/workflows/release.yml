@@ -2,16 +2,8 @@ name: Release and deploy ObStack
 
 on:
   push:
-    branches-ignore:
-      - "**"
     tags:
       - "v[0-9]*.[0-9]*.[0-9]*"
-  workflow_dispatch:
-    inputs:
-      release_tag:
-        description: "Existing version tag to release (e.g. v1.0.0)"
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -21,20 +13,83 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  verify-release-branch:
+    name: Verify tag is exactly the release branch HEAD
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out tag and full Git history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require a semantic version tag on release branch HEAD
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          TAGGED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Release tag must use vMAJOR.MINOR.PATCH (for example v1.2.3)"
+            exit 1
+          fi
+          git fetch --no-tags origin refs/heads/release:refs/remotes/origin/release
+          RELEASE_HEAD="$(git rev-parse refs/remotes/origin/release)"
+          if [[ "$TAGGED_SHA" != "$RELEASE_HEAD" ]]; then
+            echo "::error::Refusing deployment: tag $RELEASE_TAG points to $TAGGED_SHA, but origin/release is at $RELEASE_HEAD."
+            echo "::error::Create the version tag on the exact reviewed release branch HEAD."
+            exit 1
+          fi
+          echo "Verified $RELEASE_TAG points to release branch HEAD $RELEASE_HEAD."
+
+  changelog-validation:
+    name: Validate version changelog entry
+    needs: verify-release-branch
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Validate and extract release notes
+        run: python scripts/release_changelog.py "${{ github.ref_name }}" --output "${{ runner.temp }}/release-notes.md"
+
+  promotion-token-validation:
+    name: Validate release automation token
+    needs: verify-release-branch
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Require release automation token
+        env:
+          AUTOMATION_TOKEN: ${{ secrets.OBSTACK_RELEASE_AUTOMATION_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$AUTOMATION_TOKEN" || { echo "::error::Missing repository secret OBSTACK_RELEASE_AUTOMATION_TOKEN. It must permit contents and pull-request writes."; exit 1; }
+
   config-validation:
     name: Configuration validation (required)
+    needs: verify-release-branch
     uses: ./.github/workflows/validate.yml
 
   ansible-validation:
     name: Ansible syntax and lint validation (required)
+    needs: verify-release-branch
     uses: ./.github/workflows/ansible-validation.yml
 
   deploy-central:
     name: Deploy central host
     needs:
+      - verify-release-branch
+      - changelog-validation
+      - promotion-token-validation
       - config-validation
       - ansible-validation
-    if: ${{ needs.config-validation.result == 'success' && needs.ansible-validation.result == 'success' }}
+    if: ${{ needs.verify-release-branch.result == 'success' && needs.changelog-validation.result == 'success' && needs.promotion-token-validation.result == 'success' && needs.config-validation.result == 'success' && needs.ansible-validation.result == 'success' }}
     runs-on: ubuntu-latest
     environment: production
     permissions:
@@ -44,25 +99,13 @@ jobs:
       ANSIBLE_HOST_KEY_CHECKING: "True"
       OBSTACK_GRAFANA_ADMIN_USER: ${{ secrets.OBSTACK_GRAFANA_ADMIN_USER }}
       OBSTACK_GRAFANA_ADMIN_PASSWORD: ${{ secrets.OBSTACK_GRAFANA_ADMIN_PASSWORD }}
-      OBSTACK_ANSIBLE_VAULT_PASSWORD_FILE: ${{ runner.temp }}/obstack-vault-password
+      OBSTACK_ANSIBLE_VAULT_PASSWORD_FILE: ${{ github.workspace }}/.obstack-vault-password
     steps:
-      - name: Validate release tag
-        shell: bash
-        env:
-          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
-        run: |
-          set -euo pipefail
-          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::Release tag must use vMAJOR.MINOR.PATCH (for example v1.2.3)"
-            exit 1
-          fi
-
-      - name: Check out tagged release
+      - name: Check out verified tagged release
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
-
       - name: Require deployment credentials and inventory
         shell: bash
         env:
@@ -85,18 +128,101 @@ jobs:
           chmod 0600 "$RUNNER_TEMP/production-inventory.yml"
           printf '%s' "$VAULT_PASSWORD" > "$OBSTACK_ANSIBLE_VAULT_PASSWORD_FILE"
           chmod 0600 "$OBSTACK_ANSIBLE_VAULT_PASSWORD_FILE"
-
       - name: Install Ansible and required collections
         run: |
           python -m pip install --disable-pip-version-check ansible-core==2.18.6
           ansible-galaxy collection install -r ansible/requirements.yml
-
       - name: Deploy central stack
-        env:
-          OBSTACK_DEPLOY_SSH_PRIVATE_KEY_PATH: ${{ runner.temp }}/../.ssh/obstack_deploy
         run: |
           set -euo pipefail
           ansible-playbook -i "$RUNNER_TEMP/production-inventory.yml" ansible/playbooks/central.yml \
             --private-key "$HOME/.ssh/obstack_deploy" \
             -e obstack_apply=true \
             -e obstack_repo_root="$GITHUB_WORKSPACE"
+
+  publish-github-release:
+    name: Publish GitHub Release after deployment
+    needs: deploy-central
+    if: ${{ needs.deploy-central.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out verified tagged release
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Extract validated release notes
+        run: python scripts/release_changelog.py "${{ github.ref_name }}" --output "${{ runner.temp }}/release-notes.md"
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          NOTES_FILE: ${{ runner.temp }}/release-notes.md
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG" --title "ObStack $RELEASE_TAG" --notes-file "$NOTES_FILE"
+          else
+            gh release create "$RELEASE_TAG" --verify-tag --title "ObStack $RELEASE_TAG" --notes-file "$NOTES_FILE"
+          fi
+
+  propose-changelog-promotion:
+    name: Open changelog promotion PR after successful release
+    needs: publish-github-release
+    if: ${{ needs.publish-github-release.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check out verified tagged release
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          token: ${{ secrets.OBSTACK_RELEASE_AUTOMATION_TOKEN }}
+      - name: Configure Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Create changelog promotion branch and commit
+        env:
+          GH_TOKEN: ${{ secrets.OBSTACK_RELEASE_AUTOMATION_TOKEN }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          PROMOTION_BRANCH="automation/changelog-promotion-$RELEASE_TAG"
+          EXISTING_PR="$(gh pr list --head "$PROMOTION_BRANCH" --base release --json number --jq 'length')"
+          if [[ "$EXISTING_PR" -gt 0 ]]; then
+            echo "A changelog promotion PR already exists for $RELEASE_TAG; no new branch commit is needed."
+            exit 0
+          fi
+          if git ls-remote --exit-code --heads origin "$PROMOTION_BRANCH" >/dev/null 2>&1; then
+            git fetch origin "$PROMOTION_BRANCH"
+            git switch -c "$PROMOTION_BRANCH" --track "origin/$PROMOTION_BRANCH"
+            grep -Fq "## [$RELEASE_TAG]" CHANGELOG.md
+            test ! -e "release-notes/$RELEASE_TAG.md"
+            echo "Reusing existing complete changelog promotion branch."
+            exit 0
+          fi
+          git switch -c "$PROMOTION_BRANCH"
+          python scripts/release_changelog.py "$RELEASE_TAG" --promote-changelog CHANGELOG.md
+          rm "release-notes/$RELEASE_TAG.md"
+          git add CHANGELOG.md "release-notes/$RELEASE_TAG.md"
+          git commit -m "docs(changelog): publish $RELEASE_TAG after deployment"
+          git push origin "$PROMOTION_BRANCH"
+      - name: Open changelog promotion PR
+        env:
+          GH_TOKEN: ${{ secrets.OBSTACK_RELEASE_AUTOMATION_TOKEN }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          PROMOTION_BRANCH: automation/changelog-promotion-${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if gh pr view "$PROMOTION_BRANCH" >/dev/null 2>&1; then
+            echo "Promotion PR already exists for $RELEASE_TAG."
+          else
+            gh pr create --base release --head "$PROMOTION_BRANCH" \
+              --title "Publish changelog for $RELEASE_TAG" \
+              --body "This PR promotes pending release metadata into the versioned root CHANGELOG.md and removes the pending metadata file. It was generated only after the production deployment and GitHub Release for $RELEASE_TAG succeeded. Review and merge under the repository's normal branch protections."
+          fi

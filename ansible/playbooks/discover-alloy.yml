@@ -7,7 +7,7 @@
   gather_facts: true
   tasks:
     - name: Locate Docker CLI
-      ansible.builtin.command: command -v docker
+      ansible.builtin.command: docker --version
       register: docker_cli
       changed_when: false
       failed_when: false
@@ -19,12 +19,12 @@
     - name: List all containers without environment values
       ansible.builtin.command:
         argv:
-          - "{{ docker_cli.stdout | trim }}"
+          - docker
           - ps
           - --all
           - --no-trunc
           - --format
-          - "{{'{{'}}.ID{{'}}'}}|{{'{{'}}.Names{{'}}'}}|{{'{{'}}.Image{{'}}'}}|{{'{{'}}.Status{{'}}'}}"
+          - "{{ '{{' }}.ID{{ '}}' }}|{{ '{{' }}.Names{{ '}}' }}|{{ '{{' }}.Image{{ '}}' }}|{{ '{{' }}.Status{{ '}}' }}"
       register: docker_ps
       changed_when: false
       when: obstack_docker_available
@@ -36,11 +36,11 @@
     - name: Inspect safe Alloy metadata only
       ansible.builtin.command:
         argv:
-          - "{{ docker_cli.stdout | trim }}"
+          - docker
           - inspect
           - --format
           - >-
-            name={{'{{'}}.Name{{'}}'}} image={{'{{'}}.Config.Image{{'}}'}} state={{'{{'}}.State.Status{{'}}'}} restart={{'{{'}}.HostConfig.RestartPolicy.Name{{'}}'}} mounts={{'{{'}}range .Mounts{{'}}'}}{{'{{'}}.Source{{'}}'}}:{{'{{'}}.Destination{{'}}'}}:{{'{{'}}.RW{{'}}'}};{{'{{'}}end{{'}}'}} compose_project={{'{{'}}index .Config.Labels "com.docker.compose.project"{{'}}'}} compose_service={{'{{'}}index .Config.Labels "com.docker.compose.service"{{'}}'}}
+            name={{ '{{' }}.Name{{ '}}' }} image={{ '{{' }}.Config.Image{{ '}}' }} state={{ '{{' }}.State.Status{{ '}}' }} restart={{ '{{' }}.HostConfig.RestartPolicy.Name{{ '}}' }} mounts={{ '{{' }}range .Mounts{{ '}}' }}{{ '{{' }}.Source{{ '}}' }}:{{ '{{' }}.Destination{{ '}}' }}:{{ '{{' }}.RW{{ '}}' }};{{ '{{' }}end{{ '}}' }} compose_project={{ '{{' }}index .Config.Labels "com.docker.compose.project"{{ '}}' }} compose_service={{ '{{' }}index .Config.Labels "com.docker.compose.service"{{ '}}' }}
           - "{{ item }}"
       loop: "{{ obstack_alloy_ids | default([]) }}"
       register: alloy_inspect
