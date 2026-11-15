@@ -1,4 +1,15 @@
 ---
+- name: Create a dedicated group for the unprivileged Nginx process
+  ansible.builtin.group:
+    name: obstack-nginx
+    system: true
+    state: present
+  register: obstack_nginx_group
+
+- name: Record the dedicated Nginx group ID for the Compose container
+  ansible.builtin.set_fact:
+    obstack_nginx_auth_gid: "{{ obstack_nginx_group.gid }}"
+
 - name: Create private PKI directory
   ansible.builtin.file:
     path: /etc/obstack/pki
@@ -69,12 +80,12 @@
     creates: /etc/obstack/pki/central.key
   no_log: true
 
-- name: Restrict central TLS private key permissions
+- name: Allow only the dedicated Nginx group to read the central TLS key
   ansible.builtin.file:
     path: /etc/obstack/pki/central.key
     owner: root
-    group: root
-    mode: "0600"
+    group: obstack-nginx
+    mode: "0640"
 
 - name: Create central TLS certificate request if absent
   ansible.builtin.command:
