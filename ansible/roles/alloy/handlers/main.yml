@@ -1,0 +1,4 @@
+---
+- name: Report staged configuration
+  ansible.builtin.debug:
+    msg: "Alloy config staged. Container reload/recreate is deliberately a separate reviewed action."

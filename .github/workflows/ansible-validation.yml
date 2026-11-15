@@ -1,0 +1,125 @@
+name: Ansible validation
+
+on:
+  workflow_call:
+  push:
+    branches: ["**"]
+    paths:
+      - "ansible/**"
+      - ".ansible-lint"
+      - "compose.yaml"
+      - "alertmanager/**"
+      - "blackbox/**"
+      - "grafana/**"
+      - "loki/**"
+      - "prometheus/**"
+      - "nginx/**"
+      - ".github/workflows/ansible-validation.yml"
+  pull_request:
+    paths:
+      - "ansible/**"
+      - "compose.yaml"
+      - "alertmanager/**"
+      - "blackbox/**"
+      - "grafana/**"
+      - "loki/**"
+      - "prometheus/**"
+      - "nginx/**"
+      - ".github/workflows/ansible-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Syntax, lint, Compose and Nginx validation
+    runs-on: ubuntu-latest
+    env:
+      ANSIBLE_CONFIG: ${{ github.workspace }}/ansible/ansible.cfg
+      ANSIBLE_HOST_KEY_CHECKING: "True"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Ansible tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible-core==2.18.6 ansible-lint==25.9.0
+          ansible-galaxy collection install -r ansible/requirements.yml
+      - name: Validate all Ansible playbook syntax
+        run: |
+          set -euo pipefail
+          for playbook in ansible/playbooks/*.yml; do
+            echo "Checking ${playbook}"
+            ansible-playbook -i ansible/inventory/hosts.example.yml "${playbook}" --syntax-check
+          done
+      - name: Run Ansible Lint
+        run: ansible-lint --profile basic ansible/
+      - name: Validate Alertmanager template in sink and webhook modes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from jinja2 import Environment
+          import yaml
+
+          template = Environment(autoescape=False).from_string(
+              Path("alertmanager/alertmanager.yml.j2").read_text()
+          )
+          cases = {
+              "sink": "",
+              "webhook": "https://hooks.example.invalid/obstack-ci",
+          }
+          for name, url in cases.items():
+              rendered = template.render(obstack_alertmanager_webhook_url=url)
+              parsed = yaml.safe_load(rendered)
+              assert parsed["route"]["receiver"] == ("obstack-webhook" if url else "default-sink")
+              if url:
+                  receiver = next(item for item in parsed["receivers"] if item["name"] == "obstack-webhook")
+                  assert receiver["webhook_configs"][0]["url"] == url
+              output = Path(f"/tmp/alertmanager-{name}.yml")
+              output.write_text(rendered)
+              print(f"Rendered Alertmanager template mode: {name}")
+          PY
+          docker run --rm --entrypoint amtool -v /tmp/alertmanager-sink.yml:/tmp/config.yml:ro prom/alertmanager:v0.28.1 check-config /tmp/config.yml
+          docker run --rm --entrypoint amtool -v /tmp/alertmanager-webhook.yml:/tmp/config.yml:ro prom/alertmanager:v0.28.1 check-config /tmp/config.yml
+      - name: Validate Compose manifest
+        run: |
+          GRAFANA_ADMIN_USER=ci GRAFANA_ADMIN_PASSWORD=ci-validation-placeholder-password \
+          NGINX_BIND_ADDRESS=127.0.0.1 NGINX_AUTH_GID=20000 \
+          docker compose -f compose.yaml config --quiet
+      - name: Validate Nginx configuration
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/obstack-nginx/tls /tmp/obstack-nginx/auth
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -keyout /tmp/obstack-nginx/tls/central.key \
+            -out /tmp/obstack-nginx/tls/central.crt \
+            -subj "/CN=obstack-ci"
+          touch /tmp/obstack-nginx/auth/metrics.htpasswd /tmp/obstack-nginx/auth/logs.htpasswd
+          sudo chown root:20000 /tmp/obstack-nginx/tls/central.key /tmp/obstack-nginx/auth/metrics.htpasswd /tmp/obstack-nginx/auth/logs.htpasswd
+          sudo chmod 0640 /tmp/obstack-nginx/tls/central.key /tmp/obstack-nginx/auth/metrics.htpasswd /tmp/obstack-nginx/auth/logs.htpasswd
+          docker run --rm --user 101:20000 --entrypoint sh \
+            -v /tmp/obstack-nginx/tls/central.key:/etc/nginx/tls/central.key:ro \
+            -v /tmp/obstack-nginx/auth:/etc/nginx/auth:ro \
+            nginx:1.28.0 -c 'test -r /etc/nginx/tls/central.key && test -r /etc/nginx/auth/metrics.htpasswd && test -r /etc/nginx/auth/logs.htpasswd'
+          docker network create obstack-nginx-ci
+          cleanup() {
+            docker rm -f obstack-ci-prometheus obstack-ci-loki obstack-ci-grafana >/dev/null 2>&1 || true
+            docker network rm obstack-nginx-ci >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          # Nginx resolves named upstreams while loading the configuration.
+          # Lightweight placeholders provide CI-only DNS names; no traffic is sent to them.
+          docker run -d --name obstack-ci-prometheus --network obstack-nginx-ci --network-alias prometheus nginx:1.28.0
+          docker run -d --name obstack-ci-loki --network obstack-nginx-ci --network-alias loki nginx:1.28.0
+          docker run -d --name obstack-ci-grafana --network obstack-nginx-ci --network-alias grafana nginx:1.28.0
+          docker run --rm --network obstack-nginx-ci --user 101:20000 --cap-add NET_BIND_SERVICE --tmpfs /var/run:mode=1777 --tmpfs /var/cache/nginx:mode=1777 --entrypoint nginx \
+            -v "$PWD/nginx/conf.d:/etc/nginx/conf.d:ro" \
+            -v /tmp/obstack-nginx/tls/central.crt:/etc/nginx/tls/central.crt:ro \
+            -v /tmp/obstack-nginx/tls/central.key:/etc/nginx/tls/central.key:ro \
+            -v /tmp/obstack-nginx/auth:/etc/nginx/auth:ro \
+            nginx:1.28.0 -t

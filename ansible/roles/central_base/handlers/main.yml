@@ -1,0 +1,11 @@
+---
+- name: Restart fail2ban
+  ansible.builtin.systemd:
+    name: fail2ban
+    state: restarted
+
+- name: Validate SSH configuration and reload
+  ansible.builtin.shell: "sshd -t && systemctl reload ssh"
+  args:
+    executable: /bin/bash
+  changed_when: true

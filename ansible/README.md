@@ -1,43 +1,88 @@
 # Ansible automation
 
-The inventory example is intentionally incomplete. Copy it to inventory/hosts.yml only after replacing placeholders with verified host data and checking all address ranges.
+The inventory example is intentionally incomplete. Copy it to inventory/hosts.yml only after replacing placeholders with verified non-secret host data. Never put passwords, private keys, tokens or vault passwords in inventory, group_vars, host_vars, GitHub files or command-line extra-vars.
 
-## Read-only discovery first
+## Secret and vault input contract
 
-Run the preflight and Alloy discovery playbooks before any mutating playbook:
+All sensitive Ansible values are read from the controller process environment through ansible/group_vars/all/env.yml. Required variables:
 
-    ansible-playbook playbooks/preflight.yml
-    ansible-playbook playbooks/discover-alloy.yml
+- OBSTACK_GRAFANA_ADMIN_USER
+- OBSTACK_ALERTMANAGER_WEBHOOK_URL (optional; must be HTTPS; unset keeps alerts on the non-delivery sink)
+- OBSTACK_GRAFANA_ADMIN_PASSWORD
+- OBSTACK_WG_PRIVATE_KEY_<INVENTORY_HOST> for each WireGuard host
+- OBSTACK_ALLOY_METRICS_PASSWORD_<INVENTORY_HOST> for each monitored host
+- OBSTACK_ALLOY_LOGS_PASSWORD_<INVENTORY_HOST> for each monitored host
 
-The Alloy discovery playbook lists Docker containers and inspects only safe metadata (image, state, restart policy, mounts, Compose project/service labels and networks). It does not print environment variables, install packages, stop containers, or change configuration.
+For host-specific names, uppercase the inventory hostname and replace every non-alphanumeric character with an underscore (remote-01 becomes REMOTE_01).
 
-## WireGuard
+Set the Ansible Vault password-file location through the standard ANSIBLE_VAULT_PASSWORD_FILE environment variable. For convenience, set OBSTACK_ANSIBLE_VAULT_PASSWORD_FILE to a protected file path and export it as ANSIBLE_VAULT_PASSWORD_FILE. The password file must be owned by the operator and mode 0600. Ansible reads the vault password from that file; do not put the password itself in the repository, command arguments or shell history. If encrypted vars files are used, their decryption key is supplied only through this environment-selected password file. Application secrets are environment-backed, not stored in committed vault files.
 
-The wireguard.yml playbook targets the wireguard inventory group and refuses to run unless obstack_apply=true is explicitly supplied. It installs WireGuard, writes a root-only interface config and enables wg-quick. This is a mutating playbook; do not run it until the VPC/overlay ranges, host addresses, peer keys, AWS security group, firewall, SSH rollback and maintenance window are reviewed.
+Example controller setup (populate values from your approved secret manager; do not commit this file):
 
-Supply each private key only through Ansible Vault or an approved secret manager. The repository contains no production keys. Public keys and peer /32 metadata may be kept in protected inventory after verification.
+    export OBSTACK_ALERTMANAGER_WEBHOOK_URL='https://your-approved-alert-webhook.example/path'
+    export OBSTACK_GRAFANA_ADMIN_USER='admin'
+    export OBSTACK_GRAFANA_ADMIN_PASSWORD='...'
+    export OBSTACK_WG_PRIVATE_KEY_OBSTACK_CENTRAL='...'
+    export OBSTACK_WG_PRIVATE_KEY_REMOTE_01='...'
+    export OBSTACK_ALLOY_METRICS_PASSWORD_REMOTE_01='...'
+    export OBSTACK_ALLOY_LOGS_PASSWORD_REMOTE_01='...'
+    export OBSTACK_ANSIBLE_VAULT_PASSWORD_FILE="$HOME/.config/obstack/vault-password"
+    export ANSIBLE_VAULT_PASSWORD_FILE="$OBSTACK_ANSIBLE_VAULT_PASSWORD_FILE"
+    chmod 0600 "$ANSIBLE_VAULT_PASSWORD_FILE"
 
-## Alloy
+Do not enable shell tracing while secrets are present. CI runs syntax/lint and config checks without production credentials and must not receive them.
 
-The Alloy role defaults to preserve. It does not install a duplicate Alloy container or stop/restart an existing container. Run discovery, identify each container's Compose owner and config/data mounts, back up the existing config, then explicitly set that host's obstack_alloy_existing_policy=adopt.
+## Central host: first-time provisioning
 
-Adoption stages a config and root-only password files; it does not automatically mount those files into a running container or restart it. A reviewed host-specific Compose change must mount the config, password files, CA certificate, /proc, /sys and host rootfs as read-only paths as appropriate. Log collection sources must be selected after checking whether the existing container has Docker socket, journald or file access.
+The central host playbook provisions Ubuntu 24.04 ARM64, installs baseline security packages and Docker, creates the private ObStack CA and central server certificate, deploys the Compose stack and checks service readiness. When OBSTACK_ALERTMANAGER_WEBHOOK_URL is supplied, Ansible renders a protected Alertmanager config to enable webhook delivery of firing and resolved alerts; otherwise the default receiver is a sink and no notifications are delivered. The URL must be HTTPS and is stored in the generated config with root ownership and 0640 permissions for the dedicated container group.
 
-Credentials and private keys belong in Ansible Vault. Never commit secrets, render them in CI, or use debug tasks to print them. Mutating playbooks require obstack_apply=true and separate explicit production approval.
+Before running:
+- Verify SSH access and keep the current SSH session open during first provisioning.
+- Confirm central inventory address, approved WireGuard IP, administrator CIDR, VPC/subnet and security-group rules.
+- Restrict SSH to the administrator CIDR, UDP 51820 to verified spoke egress IPs, and HTTPS to wg0 only.
+- Set obstack_repo_root to the absolute repository path on the Ansible controller.
+- Supply credentials using the environment contract above. Passwords must be unique and at least 24 characters.
+- Install collections with: ansible-galaxy collection install -r ansible/requirements.yml.
+- Host timezone defaults to Africa/Lagos; containers retain UTC unless deliberately configured otherwise.
+- Nginx binds to loopback during bootstrap. After WireGuard is configured and verified, bind to the hub WireGuard IP. Keep AWS public TCP 443 closed.
+- Check free disk space; the 14 GB pilot disk is tight and retention is not guaranteed without measuring ingestion.
 
+Syntax-check and inspect:
 
-## Fleet size and staged rollout
+    export ANSIBLE_CONFIG="$PWD/ansible/ansible.cfg"
+    ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/central.yml --syntax-check
+    ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/central.yml --list-tasks
+    ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/central.yml --check --diff
 
-There is no fixed ten-server limit. Add only the hosts approved for the current batch to the monitored group. Discovery and WireGuard peer templating iterate over current inventory membership. Start with two pilot hosts (preferably one AMD64 and one ARM64), then add three or four at a time after pilot and capacity gates pass. Continue adding hosts as needed; do not hardcode a fleet count.
+After approval and during a maintenance window:
 
-Run discovery only against the current inventory:
+    ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/central.yml -e obstack_apply=true
 
-    ansible-playbook -i inventory/hosts.yml playbooks/discover-alloy.yml
+Mutating playbooks require obstack_apply=true. No AWS resources, security groups or Elastic IP associations are created or modified by Ansible.
 
-To scope it to a selected pilot subset, use a host pattern or --limit, for example:
+## WireGuard hub and spokes
 
-    ansible-playbook -i inventory/hosts.yml playbooks/discover-alloy.yml --limit 'pilot-01,pilot-02'
+The WireGuard playbook configures one hub and enrolled spokes. It validates unique overlay IPs, per-host key material and hub endpoint data. Spokes initiate outbound UDP 51820 and use PersistentKeepalive=25; no forwarding, NAT, default route or spoke-to-spoke routing is enabled.
 
-The playbook is read-only, but it still requires working SSH/Ansible access and privilege escalation to inspect Docker. It cannot discover hosts that are not in the inventory or that cannot be reached. Discovery has not yet been run against the user's servers.
+The 10.77.0.0/24 value remains provisional. Do not run until VPC, office/home/VPN routes and Docker bridge ranges have been checked and Elastic IP, peer public addresses, UDP 51820 security-group allowlist, SSH rollback and maintenance window are verified.
 
-Review central CPU, memory, disk headroom, metrics/log ingestion, retention achieved and query latency before every expansion batch. The current central 2 vCPU / 2 GB / 14 GB configuration is only a pilot starting point; increase EC2/EBS resources or redesign storage based on measured growth. Resizing is not performed automatically by these playbooks.
+    ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/wireguard.yml --syntax-check
+    ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/wireguard.yml --list-tasks
+    ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/wireguard.yml -e obstack_apply=true
+
+## Certificate distribution and Alloy
+
+Distribute only the public CA certificate after central provisioning:
+
+    ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/distribute-ca.yml --syntax-check
+    ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/distribute-ca.yml -e obstack_apply=true
+
+The playbook never copies CA or central TLS private keys. Alloy adoption defaults to preserve and does not restart or rewire an existing container. Before mounting staged password files, discover the container UID/GID and grant read-only access through a dedicated group. Never make password files world-readable.
+
+## Central validation
+
+After the hub is active, CA is distributed and Nginx is bound to the WireGuard IP, run:
+
+    ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/validate-central.yml
+
+This read-only validation checks Compose rendering, services, readiness, Prometheus remote-write receiver, TLS trust and authentication behavior. Secret-bearing tasks retain no_log=true.

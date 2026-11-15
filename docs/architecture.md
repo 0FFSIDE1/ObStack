@@ -63,7 +63,7 @@ Alloy collects approved sources, filters/redacts secrets and unnecessary sensiti
 
 ### Alerting
 
-Prometheus rules -> Alertmanager -> configured Telegram, SMTP, Slack or webhook receivers. Credentials are runtime secrets/protected files. Firing/resolved routes and delivery must be tested.
+Prometheus rules -> Alertmanager -> configured Telegram, SMTP, Slack or webhook receivers. Credentials are runtime secrets/protected files. Firing/resolved routes and delivery must be tested. The repository currently supports an optional generic HTTPS webhook URL via the controller environment variable OBSTACK_ALERTMANAGER_WEBHOOK_URL; when it is unset, the Alertmanager default receiver is a sink and no notifications are delivered. Actual endpoint selection and end-to-end delivery tests remain prerequisites.
 
 ## 4. Multi-tenancy and label contract
 
@@ -113,14 +113,8 @@ Use Ansible for repeatable idempotent provisioning. Do not modify production hos
 - Central ARM64 and remote ARM64/AMD64 image, package and binary compatibility verified.
 - Backup restoration demonstrated.
 - Security/configuration checks pass and residual risks documented.
- 
 
-## 9. Fleet-size and central-capacity decisions (2026-11-15)
 
-The earlier discovery notes described an initial fleet of ten remote servers. That is not a fixed project limit. The user's rollout preference is to begin with approximately two servers, add batches of three or four, and potentially grow beyond ten. Treat the fleet as inventory-driven and elastic: Ansible playbooks and WireGuard peer generation must iterate over the hosts currently enrolled, not assume a fixed count. The example inventory is a template and should contain only the hosts in the current approved onboarding batch.
+## Central HTTPS edge and host time
 
-The initial two-host pilot should include one AMD64 and one ARM64 server where practical. Run read-only Alloy discovery on the selected hosts first; the user does not know which servers already run Alloy in Docker. Preserve existing containers by default and make adoption a per-host reviewed decision.
-
-The central observability host is also not fixed at 2 vCPU / 2 GB RAM / 14 GB disk. Those values describe the initial constrained pilot only. The design must support vertical EC2/EBS resizing and later storage/backend changes as telemetry volume grows. Before each onboarding batch, review CPU, memory, disk growth/free space, log GB/day, metrics series/sample rate, retention achieved, ingestion lag and query latency. Scale storage/compute before capacity pressure threatens retention or service availability. Increasing a single host does not provide high availability.
-
-The previously proposed 10.77.0.0/24 overlay is provisional. Select the final CIDR based on route-overlap checks and anticipated growth; do not hardcode the fleet size or assign addresses by assuming ten hosts.
+The central stack includes Nginx as a Dockerized TLS reverse proxy. It fronts Grafana and is loopback-bound during bootstrap; after the WireGuard hub is active, it can bind to the hub's WireGuard address for private operator access. Telemetry ingestion routes remain disabled until remote-write and Loki push authentication are implemented. The central Ubuntu host uses the Africa/Lagos timezone with chrony time synchronization; cross-host telemetry should use UTC timestamps.

@@ -1,0 +1,42 @@
+groups:
+  - name: obstack-platform
+    rules:
+      - alert: PrometheusTargetMissing
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: warning
+          category: availability
+        annotations:
+          summary: "Prometheus target is unavailable"
+          description: "Target {{ $labels.job }} / {{ $labels.instance }} has been down for more than 5 minutes."
+
+      - alert: PrometheusConfigReloadFailed
+        expr: prometheus_config_last_reload_successful == 0
+        for: 2m
+        labels:
+          severity: critical
+          category: configuration
+        annotations:
+          summary: "Prometheus configuration reload failed"
+          description: "Prometheus rejected its most recent configuration reload. Inspect config validation and Prometheus logs."
+
+      - alert: PrometheusTSDBStorageWarning
+        expr: prometheus_tsdb_storage_blocks_bytes > 2400000000
+        for: 10m
+        labels:
+          severity: warning
+          category: capacity
+        annotations:
+          summary: "Prometheus TSDB block storage is approaching its configured cap"
+          description: "TSDB block storage is above 2.4 GB against the configured 3 GB retention-size cap. Review ingestion, series cardinality and disk headroom; plan scale-up if needed."
+
+      - alert: PrometheusTSDBStorageCritical
+        expr: prometheus_tsdb_storage_blocks_bytes > 2700000000
+        for: 5m
+        labels:
+          severity: critical
+          category: capacity
+        annotations:
+          summary: "Prometheus TSDB block storage has very little cap headroom"
+          description: "TSDB block storage is above 2.7 GB against the configured 3 GB retention-size cap. Investigate promptly; this alert does not guarantee filesystem free-space headroom."

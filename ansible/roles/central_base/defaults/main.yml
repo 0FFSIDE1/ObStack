@@ -1,0 +1,8 @@
+---
+obstack_admin_ssh_port: 22
+obstack_ssh_allowed_cidr: ""
+obstack_ufw_enabled: true
+obstack_ssh_password_authentication: "yes"
+obstack_ssh_permit_root_login: "no"
+obstack_install_dir: /opt/obstack
+obstack_timezone: Africa/Lagos

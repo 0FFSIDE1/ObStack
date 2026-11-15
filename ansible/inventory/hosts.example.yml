@@ -1,0 +1,37 @@
+all:
+  children:
+    observability:
+      hosts:
+        obstack-central:
+          ansible_host: REPLACE_WITH_CENTRAL_MANAGEMENT_ADDRESS
+          obstack_arch: arm64
+          obstack_wg_address: REPLACE_WITH_APPROVED_HUB_ADDRESS_CIDR
+          obstack_wg_vpn_ip: REPLACE_WITH_APPROVED_CENTRAL_WIREGUARD_IPV4
+          obstack_wg_public_key: REPLACE_WITH_HUB_PUBLIC_KEY
+    monitored:
+      hosts:
+        # Add only the servers selected for the current onboarding batch.
+        # This example shows one host; add remote-02, remote-03, ... as needed.
+        remote-01:
+          ansible_host: REPLACE_WITH_VERIFIED_STATIC_PUBLIC_IPV4
+          obstack_arch: amd64
+          obstack_wg_address: REPLACE_WITH_UNIQUE_APPROVED_SPOKE_ADDRESS_CIDR
+          obstack_wg_vpn_ip: REPLACE_WITH_UNIQUE_APPROVED_SPOKE_VPN_IP
+          obstack_wg_public_key: REPLACE_WITH_REMOTE_PUBLIC_KEY
+          obstack_wg_peer_public_ip: REPLACE_WITH_VERIFIED_STATIC_EGRESS_IPV4
+          obstack_wg_endpoint: REPLACE_WITH_CENTRAL_ELASTIC_IP_AND_UDP_51820
+          project: REPLACE_WITH_PROJECT
+          environment: production
+          obstack_server_role: server
+          obstack_region: REPLACE_WITH_REGION
+    wireguard:
+      children:
+        observability:
+        monitored:
+
+# This inventory is intentionally not sized for a fixed fleet.
+# Add/remove monitored hosts as the fleet changes; the Ansible groups and
+# WireGuard peer template iterate over inventory membership.
+# Select an overlay CIDR only after checking VPC, office/home/VPN, host routes
+# and Docker bridge ranges. The example 10.77.0.0/24 is provisional, not a
+# hardcoded fleet limit. Keep private keys and telemetry credentials in Vault.

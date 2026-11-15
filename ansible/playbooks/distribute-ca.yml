@@ -1,0 +1,67 @@
+---
+- name: Read the public ObStack CA from the central hub
+  hosts: observability
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Require exactly one central CA source
+      ansible.builtin.assert:
+        that:
+          - groups['observability'] | length == 1
+        fail_msg: "Certificate distribution requires exactly one observability host."
+
+    - name: Read only the public CA certificate
+      ansible.builtin.slurp:
+        src: /etc/obstack/pki/ca.crt
+      register: obstack_ca_bundle
+
+    - name: Verify the source certificate is a valid self-signed CA
+      ansible.builtin.command:
+        argv:
+          - openssl
+          - verify
+          - -CAfile
+          - /etc/obstack/pki/ca.crt
+          - /etc/obstack/pki/ca.crt
+      changed_when: false
+
+- name: Distribute the public CA certificate to enrolled spokes
+  hosts: monitored
+  become: true
+  gather_facts: false
+  serial: 2
+  pre_tasks:
+    - name: Require explicit authorization for remote trust-store changes
+      ansible.builtin.assert:
+        that:
+          - obstack_apply | default(false) | bool
+          - groups['observability'] | length == 1
+        fail_msg: "Set obstack_apply=true only after reviewing the enrolled hosts and approving CA distribution."
+
+  tasks:
+    - name: Create protected ObStack PKI directory
+      ansible.builtin.file:
+        path: /etc/obstack/pki
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Install the public CA certificate only
+      ansible.builtin.copy:
+        content: "{{ hostvars[groups['observability'][0]].obstack_ca_bundle.content | b64decode }}"
+        dest: /etc/obstack/pki/ca.crt
+        owner: root
+        group: root
+        mode: "0644"
+      no_log: true
+
+    - name: Verify the installed CA certificate
+      ansible.builtin.command:
+        argv:
+          - openssl
+          - verify
+          - -CAfile
+          - /etc/obstack/pki/ca.crt
+          - /etc/obstack/pki/ca.crt
+      changed_when: false

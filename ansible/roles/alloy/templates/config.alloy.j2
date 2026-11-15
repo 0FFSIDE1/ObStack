@@ -1,0 +1,51 @@
+// ObStack managed Alloy configuration. Passwords are mounted as files, not embedded.
+logging {
+  level = "info"
+  format = "logfmt"
+}
+prometheus.exporter.unix "host" {
+  procfs_path = "/host/proc"
+  sysfs_path = "/host/sys"
+  rootfs_path = "/host/root"
+}
+prometheus.scrape "host" {
+  targets = prometheus.exporter.unix.host.targets
+  scrape_interval = "30s"
+  forward_to = [prometheus.remote_write.obstack.receiver]
+}
+prometheus.remote_write "obstack" {
+  endpoint {
+    url = "{{ obstack_alloy_remote_write_url }}"
+    basic_auth {
+      username = "{{ obstack_alloy_metrics_username }}"
+      password_file = "/run/secrets/metrics_password"
+    }
+    tls_config {
+      ca_file = "{{ obstack_alloy_ca_file }}"
+      insecure_skip_verify = false
+    }
+  }
+  external_labels = {
+    platform = "obstack",
+    server = "{{ inventory_hostname }}",
+    service = "host",
+    role = "{{ obstack_server_role | default('server') }}",
+    region = "{{ obstack_region | default('unknown') }}",
+    project = "{{ project | default('unassigned') }}",
+    environment = "{{ environment | default('unknown') }}",
+  }
+}
+loki.write "obstack" {
+  endpoint {
+    url = "{{ obstack_alloy_loki_url }}"
+    tenant_id = "{{ obstack_alloy_tenant_id }}"
+    basic_auth {
+      username = "{{ obstack_alloy_logs_username }}"
+      password_file = "/run/secrets/logs_password"
+    }
+    tls_config {
+      ca_file = "{{ obstack_alloy_ca_file }}"
+      insecure_skip_verify = false
+    }
+  }
+}

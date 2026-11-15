@@ -1,0 +1,124 @@
+---
+- name: Install baseline security and operations packages
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+      - ufw
+      - fail2ban
+      - unattended-upgrades
+      - chrony
+      - openssl
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Set host timezone
+  community.general.timezone:
+    name: "{{ obstack_timezone }}"
+  when: ansible_facts['date_time']['tz'] != obstack_timezone
+
+- name: Configure unattended security upgrades
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+
+- name: Configure fail2ban SSH jail
+  ansible.builtin.copy:
+    dest: /etc/fail2ban/jail.d/sshd.local
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [sshd]
+      enabled = true
+      backend = systemd
+      maxretry = 5
+      findtime = 10m
+      bantime = 1h
+  notify: Restart fail2ban
+
+- name: Apply conservative SSH hardening without disabling password authentication
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/60-obstack-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      PermitRootLogin {{ obstack_ssh_permit_root_login }}
+      PasswordAuthentication {{ obstack_ssh_password_authentication }}
+      X11Forwarding no
+      AllowTcpForwarding local
+      MaxAuthTries 4
+      ClientAliveInterval 300
+      ClientAliveCountMax 2
+  notify: Validate and reload SSH
+
+- name: Require a known administrator source CIDR before enabling the host firewall
+  ansible.builtin.assert:
+    that:
+      - obstack_ssh_allowed_cidr | default('') | length > 0
+      - obstack_ssh_allowed_cidr is ansible.utils.ipv4
+    fail_msg: "Set obstack_ssh_allowed_cidr to the verified administrator public IPv4 CIDR before enabling UFW."
+
+- name: Allow SSH from the approved administrator source only
+  community.general.ufw:
+    rule: allow
+    port: "{{ obstack_admin_ssh_port }}"
+    proto: tcp
+    from_ip: "{{ obstack_ssh_allowed_cidr }}"
+
+- name: Allow WireGuard UDP only from verified enrolled spoke egress addresses
+  community.general.ufw:
+    rule: allow
+    port: "51820"
+    proto: udp
+    from_ip: "{{ hostvars[item].obstack_wg_peer_public_ip }}"
+  loop: "{{ groups['monitored'] | default([]) }}"
+
+- name: Allow HTTPS only on the WireGuard interface
+  community.general.ufw:
+    rule: allow
+    interface: wg0
+    direction: in
+    port: "443"
+    proto: tcp
+
+- name: Set UFW default inbound deny
+  community.general.ufw:
+    direction: incoming
+    policy: deny
+
+- name: Set UFW default outbound allow
+  community.general.ufw:
+    direction: outgoing
+    policy: allow
+
+- name: Enable UFW
+  community.general.ufw:
+    state: enabled
+  when: obstack_ufw_enabled | bool
+
+- name: Ensure baseline services are enabled
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop:
+    - fail2ban
+    - unattended-upgrades
+    - chrony
+
+- name: Create protected installation directory
+  ansible.builtin.file:
+    path: "{{ obstack_install_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"

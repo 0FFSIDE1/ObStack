@@ -1,0 +1,6 @@
+---
+# Copy to group_vars/observability.yml and replace non-secret placeholders.
+# All credentials and private keys are loaded from controller environment.
+obstack_repo_root: REPLACE_WITH_ABSOLUTE_PATH_TO_CHECKED_OUT_OBSTACK_REPO
+obstack_ssh_allowed_cidr: REPLACE_WITH_ADMIN_PUBLIC_IPV4_CIDR
+obstack_wg_vpn_ip: REPLACE_WITH_APPROVED_CENTRAL_WIREGUARD_IPV4

@@ -1,0 +1,12 @@
+---
+- name: Stage secure Alloy config only for explicitly approved hosts
+  hosts: monitored
+  become: true
+  gather_facts: true
+  pre_tasks:
+    - name: Require explicit change authorization
+      ansible.builtin.assert:
+        that: [obstack_apply | default(false) | bool]
+        fail_msg: "Set obstack_apply=true only after reviewing host-specific adoption and approving the change."
+  roles:
+    - alloy

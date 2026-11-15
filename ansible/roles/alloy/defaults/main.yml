@@ -1,0 +1,13 @@
+---
+obstack_alloy_existing_policy: preserve
+obstack_alloy_config_path: /etc/alloy/config.alloy
+obstack_alloy_secrets_dir: /etc/alloy/secrets
+obstack_alloy_metrics_password: ""
+obstack_alloy_logs_password: ""
+obstack_alloy_metrics_username: "obstack-{{ inventory_hostname }}-metrics"
+obstack_alloy_logs_username: "obstack-{{ inventory_hostname }}-logs"
+obstack_alloy_remote_write_url: "https://{{ hostvars[groups['observability'][0]].obstack_wg_vpn_ip | default('') }}/api/v1/write"
+obstack_alloy_loki_url: "https://{{ hostvars[groups['observability'][0]].obstack_wg_vpn_ip | default('') }}/loki/api/v1/push"
+# Container path; mount the distributed host CA certificate read-only here.
+obstack_alloy_ca_file: /etc/ssl/certs/obstack-ca.crt
+obstack_alloy_tenant_id: obstack
