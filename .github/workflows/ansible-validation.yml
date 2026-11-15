@@ -17,19 +17,9 @@ on:
       - ".github/workflows/ansible-validation.yml"
       - ".github/workflows/wireguard-preflight-approval.yml"
       - ".github/workflows/release.yml"
+  # This check is required by the main/release ruleset, so it must run on every PR.
+  # Keep path filters on push only; skipped PR workflows do not report a successful required check.
   pull_request:
-    paths:
-      - "ansible/**"
-      - ".ansible-lint"
-      - "compose.yaml"
-      - "alertmanager/**"
-      - "blackbox/**"
-      - "grafana/**"
-      - "loki/**"
-      - "prometheus/**"
-      - "nginx/**"
-      - ".github/workflows/ansible-validation.yml"
-      - ".github/workflows/wireguard-preflight-approval.yml"
   workflow_dispatch:
 
 permissions:
