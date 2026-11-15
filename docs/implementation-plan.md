@@ -33,8 +33,10 @@
 - [x] Loki authentication enabled, 20-day retention/compaction configured, and single-node obstack tenant assigned by the authenticated Nginx route.
 - [x] Nginx TLS routes for Prometheus remote-write and Loki push with separate per-host Basic Auth files; Grafana remains behind the same TLS proxy.
 - [x] Per-host bcrypt htpasswd provisioning from Ansible Vault; backend service ports remain loopback-only.
-- [ ] Establish host/disk/service capacity alerting, safe free-space headroom and scale-up/degradation runbook.
-- [ ] Grafana RBAC, project dashboard provisioning and application-specific observability.
+- [x] Add Prometheus TSDB storage-cap warning/critical alert thresholds against the configured 3 GB cap.
+- [ ] Establish host filesystem/free-space and service capacity alerting, safe free-space headroom and scale-up/degradation runbook; this requires host-level metrics and measured pilot baselines.
+- [x] Provision a version-controlled central platform overview dashboard from Grafana files.
+- [ ] Grafana RBAC, project dashboards and application-specific observability.
 
 ## Phase 4 — Remote agent and exporter patterns
 
@@ -59,8 +61,10 @@
 
 ## Phase 6 — Alerting
 
-- [ ] Reusable infrastructure, Docker, application, database, telemetry, security/operations and backup alert rules.
-- [ ] Alertmanager grouping, severity/project/environment/service routing, inhibition, templates and configurable receivers.
+- [x] Baseline platform alerts for scrape-target down, Prometheus config reload failure and TSDB storage-cap thresholds.
+- [ ] Reusable infrastructure, Docker, application, database, telemetry, security/operations and backup alert rules; host/application metric sources and thresholds are not yet established.
+- [x] Alertmanager grouping by alert name, project, environment and server; severity inhibition for critical over warning is configured.
+- [ ] Complete severity/project/environment/service routing, templates and configurable notification receivers. The default receiver currently acts as a sink until the user selects notification destination(s).
 - [ ] Firing/resolved delivery tests; thresholds documented and configurable.
 
 ## Phase 7 — Security and compliance
@@ -73,6 +77,7 @@
 ## Phase 8 — Testing and evidence
 
 - [x] Add CI checks for Ansible syntax/lint, Compose rendering and Nginx configuration syntax.
+- [x] Add Prometheus config/rule, Alertmanager, Loki, Blackbox Exporter, Grafana provisioning YAML and dashboard JSON checks to the configuration workflow.
 - [x] Add read-only central runtime validation for service readiness, TLS trust, Prometheus receiver and unauthenticated/authenticated route behavior.
 - [ ] Run CI and capture actual results; do not infer success from workflow configuration.
 - [ ] Integration checks: metrics/logs/query paths, labels, alert routes, persistent data, backup restore.
