@@ -1,0 +1,10 @@
+---
+- name: Prepare pending ObStack release metadata on the Ansible controller
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+  vars:
+    obstack_release_repo_root: "{{ playbook_dir | dirname | dirname }}"
+  roles:
+    - release_metadata

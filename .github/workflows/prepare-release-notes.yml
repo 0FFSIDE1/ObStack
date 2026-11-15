@@ -1,0 +1,100 @@
+name: Prepare release notes from merged pull requests
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: Release tag to prepare (for example v1.3.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: obstack-prepare-release-notes
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Generate and propose pending release metadata
+    if: ${{ github.ref == 'refs/heads/release' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out release branch with full history
+        uses: actions/checkout@v4
+        with:
+          ref: release
+          fetch-depth: 0
+          token: ${{ secrets.OBSTACK_RELEASE_AUTOMATION_TOKEN }}
+      - name: Validate automation token
+        env:
+          AUTOMATION_TOKEN: ${{ secrets.OBSTACK_RELEASE_AUTOMATION_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$AUTOMATION_TOKEN" || {
+            echo "::error::Missing OBSTACK_RELEASE_AUTOMATION_TOKEN with Contents and Pull requests write permissions."
+            exit 1
+          }
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Ensure release classification labels exist
+        env:
+          GH_TOKEN: ${{ secrets.OBSTACK_RELEASE_AUTOMATION_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh label create release:none --repo "$GITHUB_REPOSITORY" --color "ededed" --description "Exclude this PR from release notes" --force
+          gh label create release:added --repo "$GITHUB_REPOSITORY" --color "0e8a16" --description "User-facing addition" --force
+          gh label create release:changed --repo "$GITHUB_REPOSITORY" --color "1d76db" --description "User-facing change" --force
+          gh label create release:deprecated --repo "$GITHUB_REPOSITORY" --color "fbca04" --description "Deprecation" --force
+          gh label create release:removed --repo "$GITHUB_REPOSITORY" --color "d93f0b" --description "Removal" --force
+          gh label create release:fixed --repo "$GITHUB_REPOSITORY" --color "5319e7" --description "Bug fix" --force
+          gh label create release:security --repo "$GITHUB_REPOSITORY" --color "b60205" --description "Security change" --force
+      - name: Generate release metadata from merged pull requests
+        env:
+          GH_TOKEN: ${{ secrets.OBSTACK_RELEASE_AUTOMATION_TOKEN }}
+          RELEASE_VERSION: ${{ inputs.release_version }}
+        run: |
+          set -euo pipefail
+          python scripts/generate_release_metadata.py "$RELEASE_VERSION" \
+            --repo "$GITHUB_REPOSITORY" \
+            --base-branch release
+          python scripts/release_changelog.py "$RELEASE_VERSION" \
+            --output "$RUNNER_TEMP/release-notes.md"
+      - name: Create metadata pull request
+        env:
+          GH_TOKEN: ${{ secrets.OBSTACK_RELEASE_AUTOMATION_TOKEN }}
+          RELEASE_VERSION: ${{ inputs.release_version }}
+        run: |
+          set -euo pipefail
+          BRANCH="automation/release-notes-$RELEASE_VERSION"
+          if gh pr list --base release --head "$BRANCH" --state all --json number --jq 'length' | grep -qv '^0$'; then
+            echo "::error::A release metadata PR already exists for $RELEASE_VERSION."
+            exit 1
+          fi
+          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+            echo "::error::Branch $BRANCH already exists; inspect it before retrying."
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$BRANCH"
+          git add "release-notes/$RELEASE_VERSION.md"
+          git commit -m "docs(release): prepare $RELEASE_VERSION notes"
+          git push origin "$BRANCH"
+          gh pr create --base release --head "$BRANCH" \
+            --title "docs(release): prepare $RELEASE_VERSION notes" \
+            --body "Automatically generated from merged pull requests since the previous release tag. Review the categorized entries and merge this PR before creating the release tag. No deployment or publication is performed by this workflow."
+          gh pr edit "$BRANCH" --add-label release:none
+    # A manual dispatch from any other branch must fail rather than silently do nothing.
+  reject-wrong-branch:
+    if: ${{ github.ref != 'refs/heads/release' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "::error::Run this workflow from the release branch only."
+          exit 1
