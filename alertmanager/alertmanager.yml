@@ -1,0 +1,16 @@
+global:
+  resolve_timeout: 5m
+route:
+  receiver: default-sink
+  group_by: ["alertname", "project", "environment", "server"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+receivers:
+  - name: default-sink
+inhibit_rules:
+  - source_matchers:
+      - severity="critical"
+    target_matchers:
+      - severity="warning"
+    equal: ["alertname", "project", "environment", "server"]
