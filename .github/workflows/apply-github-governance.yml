@@ -32,7 +32,6 @@ jobs:
             jq -e '
               .name and
               (.target == "branch" or .target == "tag") and
-              (.source == "0FFSIDE1/ObStack") and
               (.enforcement == "active") and
               (.conditions.ref_name.include | length > 0) and
               (.rules | length > 0)
