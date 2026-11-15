@@ -74,7 +74,7 @@
 
 - name: Wait for Nginx TLS reverse proxy readiness
   ansible.builtin.uri:
-    url: https://127.0.0.1:8443/api/health
+    url: https://127.0.0.1/api/health
     validate_certs: false
     status_code: 200
   register: nginx_ready
