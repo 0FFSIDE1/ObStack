@@ -5,19 +5,29 @@ all:
         obstack-central:
           ansible_host: REPLACE_WITH_CENTRAL_MANAGEMENT_ADDRESS
           obstack_arch: arm64
+          obstack_wg_address: 10.77.0.1/24
+          obstack_wg_public_key: REPLACE_WITH_HUB_PUBLIC_KEY
     monitored:
       hosts:
         remote-01:
           ansible_host: REPLACE_WITH_VERIFIED_PUBLIC_IPV4
           obstack_arch: amd64
-          obstack_vpn_ip: 10.77.0.11
+          obstack_wg_address: 10.77.0.11/32
+          obstack_wg_vpn_ip: 10.77.0.11
+          obstack_wg_public_key: REPLACE_WITH_REMOTE_01_PUBLIC_KEY
           project: REPLACE_ME
           environment: production
         remote-06:
           ansible_host: REPLACE_WITH_VERIFIED_PUBLIC_IPV4
           obstack_arch: arm64
-          obstack_vpn_ip: 10.77.0.16
+          obstack_wg_address: 10.77.0.16/32
+          obstack_wg_vpn_ip: 10.77.0.16
+          obstack_wg_public_key: REPLACE_WITH_REMOTE_06_PUBLIC_KEY
           project: REPLACE_ME
           environment: production
-# Expand only after verifying all hostnames, IPs, architectures, ownership and SSH access.
-# Never store WireGuard private keys, passwords, tokens or preshared keys in this file.
+    wireguard:
+      children:
+        observability:
+        monitored:
+# Example only: expand after verifying all 10 hosts and checking every route range.
+# Store private keys and credentials in Ansible Vault, never in this file.
