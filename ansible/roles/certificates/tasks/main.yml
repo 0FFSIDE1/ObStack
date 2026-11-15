@@ -45,6 +45,12 @@
       - /etc/obstack/pki/ca.crt
       - -subj
       - /CN=ObStack-Private-CA
+      - -addext
+      - basicConstraints=critical,CA:TRUE
+      - -addext
+      - keyUsage=critical,keyCertSign,cRLSign
+      - -addext
+      - subjectKeyIdentifier=hash
   args:
     creates: /etc/obstack/pki/ca.crt
 
