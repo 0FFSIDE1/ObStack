@@ -4,7 +4,7 @@ The repository default branch (`main`) currently contains only `README.md`, `.gi
 
 ### Central host facts supplied by the user
 
-- Candidate OS: Ubuntu 22, 24, or 26 (exact release not yet selected).
+- OS: Ubuntu 24.04 LTS (user-confirmed intended release; host state not independently verified).
 - Initial resources are fixed for now: 2 vCPU, 2 GB RAM, 14 GB disk on AWS EC2. User says the host could be increased later. The EBS volume type and whether the 14 GB refers to root volume capacity still need confirmation.
 - Docker Engine: not installed.
 - Requested retention: metrics 30 days; logs 20 days.
@@ -12,7 +12,7 @@ The repository default branch (`main`) currently contains only `README.md`, `.gi
 
 **Capacity assessment:** the initial host is severely constrained for a centralized observability platform. The 14 GB EC2 disk must also accommodate OS, Docker image layers, persistent service state, indexes/compaction, and operational headroom; it is unlikely to support meaningful telemetry volume with the requested retention safely. 2 GB RAM limits the number of services and ingest/query headroom. Therefore, treat the initial deployment as a tightly scoped pilot / low-volume MVP, not production-capacity assurance. Retention goals must be validated against measured ingest rates and disk usage; configure hard storage limits, capacity alerts, and a documented degradation/scale-up procedure. Do not silently shorten retention: if the capacity budget is exceeded, alert and require an explicit policy decision or host expansion.
 
-**Scale-up path (engineering guidance, not vendor minimum):** first consider increasing disk to a dedicated SSD sized from measured daily metrics/log ingestion and retention plus OS, indexes, compaction, backup, and safety headroom; then increase RAM/CPU based on service utilization and query/ingest load. A planning baseline of 4 vCPU, 8 GB RAM, and 100 GB SSD may suit a modest initial fleet, but is not a guarantee and should be recalculated from observed telemetry. Prefer Ubuntu 24.04 LTS for initial stable deployment; verify support lifecycle and package availability during implementation.
+**Scale-up path (engineering guidance, not vendor minimum):** first consider increasing disk to a dedicated SSD sized from measured daily metrics/log ingestion and retention plus OS, indexes, compaction, backup, and safety headroom; then increase RAM/CPU based on service utilization and query/ingest load. A planning baseline of 4 vCPU, 8 GB RAM, and 100 GB SSD may suit a modest initial fleet, but is not a guarantee and should be recalculated from observed telemetry. Ubuntu 24.04 LTS is the user-confirmed selection; verify support lifecycle and package availability during implementation.
 
 The deployment environment is otherwise **not yet discovered**. Docker/Compose versions, hostnames/DNS, network/VPN topology, firewall policy, TLS issuer, secrets backend, backup target, and target project/server inventory remain unknown. These must not be assumed.
 ## 2. Proposed logical architecture
@@ -68,7 +68,7 @@ Use Ansible for repeatable idempotent provisioning. Do not modify production hos
 
 ## 8. Decisions required
 
-1. Confirm exact Ubuntu release and EC2 storage details (EBS volume type; root-volume capacity); host expansion is possible but not currently approved/specified.
+1. Confirm EC2 storage details (EBS volume type; root-volume capacity); host expansion is possible but not currently approved/specified.
 2. Remote Linux distributions and first project/server/service inventory.
 3. VPN/network topology, allowed peers, firewall owner and telemetry endpoint reachability.
 4. DNS and TLS issuer/renewal.
