@@ -19,7 +19,7 @@ The `release` branch exists from the current `main` baseline. Update it through 
 The `obstack-main-release-protection` ruleset targets both `main` and `release` and requires:
 
 1. Pull requests for all changes; direct pushes are blocked.
-2. Two approving reviews.
+2. One approving review.
 3. Dismissal of stale approvals when new commits are pushed.
 4. Approval of the most recent reviewable push by someone other than its author.
 5. Resolution of all review conversations.
@@ -48,9 +48,9 @@ Rulesets do not prove tag ancestry or that a tag points to the latest reviewed r
 
 ## Release procedure
 
-1. Merge approved feature/fix PRs into `main` after required checks and two approvals.
+1. Merge approved feature/fix PRs into `main` after required checks and one approval.
 2. Open a PR from `main` into `release`.
-3. Obtain two approvals, resolve review conversations, and pass required checks.
+3. Obtain one approval, resolve review conversations, and pass required checks.
 4. Merge the PR into `release`.
 5. Create the semantic version tag on the exact current `release` HEAD (for example, `v1.2.3`).
 6. Confirm release verification, configuration validation, and Ansible validation pass.
