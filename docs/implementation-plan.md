@@ -10,8 +10,8 @@
 - [x] Record user-provided initial central resources (AWS EC2 2 vCPU / 2 GB RAM / 14 GB disk, fixed for now but potentially expandable) and retention goals (30 days metrics / 20 days logs); actual host state and capacity validation remain pending.
 - [x] Record user-confirmed central OS as Ubuntu 24.04 LTS; host state remains unverified.
 - [x] Record central EC2 architecture as ARM64 / AWS Graviton (user-confirmed; verify actual instance type and host architecture before installation).
-- [x] Record initial monitoring scope as approximately 5–10 projects and 6 remote servers; project names, project-to-server mapping, environments, and workload inventory remain pending.
-- [x] Record all six remote servers as Ubuntu 24.04 LTS on a mixed ARM64 (`arm64`) and AMD64 (`amd64`) fleet; per-host architecture mapping remains pending.
+- [x] Record initial monitoring scope as approximately 5–10 projects and 10 remote servers; project names, project-to-server mapping, environments, and workload inventory remain pending.
+- [x] Record all ten remote servers as Ubuntu 24.04 LTS: 5 AMD64 (`amd64`) and 5 ARM64 (`arm64`); per-host architecture mapping remains pending.
 - [ ] Confirm remote OS, networking, TLS/DNS, secrets, backups, projects and data-volume expectations.
 - [ ] Review and approve architecture.
 
