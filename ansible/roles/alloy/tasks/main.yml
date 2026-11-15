@@ -1,7 +1,8 @@
 ---
 - name: Validate existing Alloy policy
   ansible.builtin.assert:
-    that: [obstack_alloy_existing_policy in ['preserve', 'adopt']]
+    that:
+      - obstack_alloy_existing_policy == "preserve" or obstack_alloy_existing_policy == "adopt"
     fail_msg: "Allowed policies: preserve or adopt. Replacement is not automated."
 - name: Preserve existing Alloy deployment by default
   ansible.builtin.debug:
