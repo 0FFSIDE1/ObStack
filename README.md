@@ -21,7 +21,7 @@ The initial repository implementation is on branch codex/phase-1-discovery-archi
 
 CI validates Ansible, Compose, Nginx, Prometheus, Alertmanager, Loki, Blackbox Exporter and Grafana provisioning/dashboard assets. A passing CI run is not yet evidence of deployed runtime behavior.
 
-See docs/implementation-status.md, docs/architecture.md, docs/network-architecture.md, docs/telemetry-ingestion.md and docs/implementation-plan.md.
+See docs/implementation-status.md, docs/architecture.md, docs/network-architecture.md, docs/telemetry-ingestion.md, docs/implementation-plan.md, docs/operations/ports-capacity-failure-modes.md, docs/security/threat-model.md and docs/security/iso-27002-2022-preliminary-mapping.md.
 
 ## Local configuration checks
 
