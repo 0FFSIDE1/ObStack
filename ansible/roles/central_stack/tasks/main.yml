@@ -19,8 +19,8 @@
     path: /etc/obstack/secrets/metrics.htpasswd
     state: touch
     owner: root
-    group: root
-    mode: "0600"
+    group: "101"
+    mode: "0640"
     modification_time: preserve
     access_time: preserve
 
@@ -29,8 +29,8 @@
     path: /etc/obstack/secrets/logs.htpasswd
     state: touch
     owner: root
-    group: root
-    mode: "0600"
+    group: "101"
+    mode: "0640"
     modification_time: preserve
     access_time: preserve
 
@@ -53,8 +53,8 @@
     crypt_scheme: bcrypt
     state: present
     owner: root
-    group: root
-    mode: "0600"
+    group: "101"
+    mode: "0640"
   loop: "{{ groups['monitored'] | default([]) }}"
   no_log: true
 
@@ -66,8 +66,8 @@
     crypt_scheme: bcrypt
     state: present
     owner: root
-    group: root
-    mode: "0600"
+    group: "101"
+    mode: "0640"
   loop: "{{ groups['monitored'] | default([]) }}"
   no_log: true
 
@@ -116,8 +116,8 @@
   ansible.builtin.copy:
     dest: "{{ obstack_install_dir }}/.env"
     owner: root
-    group: root
-    mode: "0600"
+    group: "101"
+    mode: "0640"
     content: |
       GRAFANA_ADMIN_USER={{ obstack_grafana_admin_user }}
       GRAFANA_ADMIN_PASSWORD={{ obstack_grafana_admin_password }}
