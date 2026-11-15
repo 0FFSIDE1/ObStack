@@ -1,0 +1,11 @@
+---
+obstack_release_categories:
+  - Added
+  - Changed
+  - Deprecated
+  - Removed
+  - Fixed
+  - Security
+obstack_release_timezone: Africa/Lagos
+obstack_release_repo_root: "{{ playbook_dir | dirname | dirname }}"
+obstack_release_notes: {}

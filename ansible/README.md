@@ -32,6 +32,24 @@ Example controller setup (populate values from your approved secret manager; do 
 
 Do not enable shell tracing while secrets are present. CI runs syntax/lint and config checks without production credentials and must not receive them.
 
+## Pending release metadata
+
+Prepare versioned release notes on the Ansible controller before opening the
+release PR. This playbook does not connect to production hosts or publish a
+release:
+
+```bash
+ANSIBLE_CONFIG="$PWD/ansible/ansible.cfg" ansible-playbook \
+  ansible/playbooks/prepare-release-metadata.yml \
+  -e '{"release_version":"v1.3.0","obstack_release_notes":{"Added":["Describe the new capability."],"Fixed":["Describe the fix."]}}'
+```
+
+The playbook uses the `Africa/Lagos` date, accepts only Added, Changed,
+Deprecated, Removed, Fixed and Security categories, validates meaningful
+content with `scripts/release_changelog.py`, and refuses to overwrite existing
+metadata. Review and commit the generated file through a normal PR. See
+[versioning and changelog policy](../docs/versioning-and-changelog.md).
+
 ## Central host: first-time provisioning
 
 The central host playbook provisions Ubuntu 24.04 ARM64, installs baseline security packages and Docker, creates the private ObStack CA and central server certificate, deploys the Compose stack and checks service readiness. When OBSTACK_ALERTMANAGER_WEBHOOK_URL is supplied, Ansible renders a protected Alertmanager config to enable webhook delivery of firing and resolved alerts; otherwise the default receiver is a sink and no notifications are delivered. The URL must be HTTPS and is stored in the generated config with root ownership and 0640 permissions for the dedicated container group.

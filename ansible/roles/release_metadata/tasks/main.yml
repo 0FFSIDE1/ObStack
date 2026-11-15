@@ -1,0 +1,74 @@
+---
+- name: Require a semantic version release tag
+  ansible.builtin.assert:
+    that:
+      - release_version is defined
+      - release_version is match('^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$')
+    fail_msg: "Set release_version to a tag in vMAJOR.MINOR.PATCH format (for example v1.3.0)."
+
+- name: Require release notes to use supported Keep a Changelog categories
+  ansible.builtin.assert:
+    that:
+      - obstack_release_notes is mapping
+      - obstack_release_notes | length > 0
+      - obstack_release_notes.keys() | list | difference(obstack_release_categories) | length == 0
+      - item.value is sequence
+      - item.value is not string
+    fail_msg: "Provide release notes as lists under Added, Changed, Deprecated, Removed, Fixed or Security."
+  loop: "{{ obstack_release_notes | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+
+- name: Get the release date in the configured timezone
+  ansible.builtin.set_fact:
+    obstack_release_date: "{{ lookup('pipe', 'TZ=' ~ obstack_release_timezone ~ ' date +%F') }}"
+
+- name: Define release metadata paths on the controller
+  ansible.builtin.set_fact:
+    obstack_release_metadata_path: "{{ obstack_release_repo_root }}/release-notes/{{ release_version }}.md"
+    obstack_release_metadata_temp_path: "{{ lookup('env', 'RUNNER_TEMP') | default('/tmp', true) }}/obstack-{{ release_version }}-pending-metadata.md"
+
+- name: Check whether pending metadata already exists
+  ansible.builtin.stat:
+    path: "{{ obstack_release_metadata_path }}"
+  register: obstack_release_metadata_existing
+
+- name: Render candidate pending release metadata on the controller
+  ansible.builtin.template:
+    src: pending-release-metadata.md.j2
+    dest: "{{ obstack_release_metadata_temp_path }}"
+    mode: "0600"
+  when: not obstack_release_metadata_existing.stat.exists
+
+- name: Select existing metadata or the newly rendered candidate for validation
+  ansible.builtin.set_fact:
+    obstack_release_metadata_validation_path: >-
+      {{ obstack_release_metadata_path if obstack_release_metadata_existing.stat.exists else obstack_release_metadata_temp_path }}
+
+- name: Validate version, date, and meaningful release-note content
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ obstack_release_repo_root }}/scripts/release_changelog.py"
+      - "{{ release_version }}"
+      - --metadata
+      - "{{ obstack_release_metadata_validation_path }}"
+  changed_when: false
+
+- name: Publish validated metadata file into the repository working tree
+  ansible.builtin.copy:
+    src: "{{ obstack_release_metadata_temp_path }}"
+    dest: "{{ obstack_release_metadata_path }}"
+    remote_src: true
+    mode: "0644"
+  when: not obstack_release_metadata_existing.stat.exists
+
+- name: Remove temporary candidate metadata
+  ansible.builtin.file:
+    path: "{{ obstack_release_metadata_temp_path }}"
+    state: absent
+  when: not obstack_release_metadata_existing.stat.exists
+
+- name: Report pending metadata location
+  ansible.builtin.debug:
+    msg: "Validated pending release metadata: {{ obstack_release_metadata_path }}"

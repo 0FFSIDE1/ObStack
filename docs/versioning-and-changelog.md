@@ -4,27 +4,30 @@ ObStack's root `CHANGELOG.md` is the published release history. Release notes
 are kept as pending metadata under `release-notes/vMAJOR.MINOR.PATCH.md` until
 the tagged deployment has succeeded.
 
-## Preparing pending release metadata
+## Preparing pending release metadata with Ansible
 
-Create `release-notes/v1.2.3.md` for the intended tag. Use this exact format:
+Run the controller-only playbook from the repository root. Supply a semantic
+version tag and meaningful notes as lists under Keep a Changelog categories:
 
-```markdown
-# Pending release metadata: v1.2.3
-Release date: 2026-11-15
-
-### Added
-- Describe a user-facing capability.
-
-### Changed
-- Describe a behavior change.
-
-### Fixed
-- Describe a fix.
+```bash
+ANSIBLE_CONFIG="$PWD/ansible/ansible.cfg" ansible-playbook \
+  ansible/playbooks/prepare-release-metadata.yml \
+  -e '{"release_version":"v1.3.0","obstack_release_notes":{"Added":["Add a capability description."],"Fixed":["Describe a user-visible fix."]}}'
 ```
 
-The metadata must match the tag, contain a valid ISO date, and include at least
-one meaningful bullet. Keep `CHANGELOG.md`'s `[Unreleased]` section for ongoing
-work; do not move pending notes into the versioned history before deployment.
+The playbook creates `release-notes/v1.3.0.md`, writes the release date in
+`Africa/Lagos`, and validates the result with the same Python validator used
+by CI and the tag-triggered release workflow. Supported categories are Added,
+Changed, Deprecated, Removed, Fixed and Security. At least one meaningful
+bullet is required; placeholder-only notes fail validation. Existing metadata
+is validated but never overwritten.
+
+This playbook runs on `localhost` with privilege escalation disabled. It does
+not connect to production hosts, create or push tags, publish GitHub Releases,
+or deploy anything. Review and commit the generated file through a normal PR.
+
+Keep `CHANGELOG.md`'s `[Unreleased]` section for ongoing work; do not move
+pending notes into the versioned history before deployment.
 
 ## Required release automation secret
 
@@ -58,6 +61,6 @@ repository's changelog history under normal governance.
 ## Local validation
 
 ```bash
-python scripts/release_changelog.py v1.2.3
-python scripts/release_changelog.py v1.2.3 --output release-notes.md
+python scripts/release_changelog.py v1.3.0
+python scripts/release_changelog.py v1.3.0 --output release-notes.md
 ```

@@ -1,0 +1,13 @@
+# Pending release metadata: {{ release_version }}
+Release date: {{ obstack_release_date }}
+
+{% for category in obstack_release_categories %}
+{% set entries = obstack_release_notes.get(category, []) %}
+{% if entries | length > 0 %}
+### {{ category }}
+{% for entry in entries %}
+- {{ entry | trim }}
+{% endfor %}
+
+{% endif %}
+{% endfor %}
