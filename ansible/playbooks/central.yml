@@ -17,14 +17,19 @@
           - ansible_distribution_version == "24.04"
           - ansible_architecture == "aarch64"
         fail_msg: "The central host must be Ubuntu 24.04 LTS on ARM64."
-    - name: Require an approved WireGuard address for certificate SAN
+    - name: Require the checked-out repository path on the Ansible controller
+      ansible.builtin.assert:
+        that:
+          - obstack_repo_root | default('') | length > 0
+        fail_msg: "Set obstack_repo_root to the absolute path of the checked-out ObStack repository on the Ansible controller."
+    - name: Require approved network addresses for certificate and firewall rules
       ansible.builtin.assert:
         that:
           - obstack_wg_vpn_ip | default('') | length > 0
           - obstack_wg_vpn_ip is ansible.utils.ipv4
           - obstack_ssh_allowed_cidr | default('') | length > 0
           - obstack_ssh_allowed_cidr is ansible.utils.ipv4
-        fail_msg: "Set obstack_wg_vpn_ip to the approved central WireGuard IPv4 address."
+        fail_msg: "Set obstack_wg_vpn_ip to the approved central WireGuard IPv4 address and obstack_ssh_allowed_cidr to the verified administrator IPv4 CIDR."
     - name: Require vaulted Grafana administrator credentials
       ansible.builtin.assert:
         that:
