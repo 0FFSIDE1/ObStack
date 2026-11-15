@@ -4,7 +4,7 @@
 **Decision owner:** User  
 **Workload classification:** Non-commercial (user-confirmed)  
 **Scope:** One central AWS EC2 observability host and ten Ubuntu 24.04 LTS remote servers (5 AMD64, 5 ARM64).  
-**Central endpoint:** an AWS Elastic IP is user-confirmed as available/existing, but the user has clarified that the VPC and EC2 instance have not yet been created. It is not yet associated with the future hub; verify its allocation, region and ownership, then associate it during approved provisioning. All ten remote servers have public IPv4 addresses (user-confirmed); the user has confirmed these addresses are static and do not change; the literal addresses still need to be collected and verified.
+**Central endpoint:** an AWS Elastic IP is user-confirmed as available/existing, but the user has clarified that the VPC and EC2 instance have not yet been created. It is not yet associated with the future hub; verify its allocation, region and ownership, then associate it during approved provisioning. All ten remote servers are standalone public-facing servers (user-confirmed), each with a static public IPv4 address (user-confirmed); the literal addresses still need to be collected and verified.
 
 ## 1. Decision
 
@@ -50,14 +50,14 @@ The following is a **provisional plan**, not an instruction to configure address
 | Remote 01–05 | 10.77.0.11/32–10.77.0.15/32 | Five AMD64 hosts |
 | Remote 06–10 | 10.77.0.16/32–10.77.0.20/32 | Five ARM64 hosts |
 
-Before adoption, check 10.77.0.0/24 against the AWS VPC CIDR, all ten remote networks, office/home LANs, other VPNs, peering and any future connected networks. Change the proposed range if it overlaps. The host-to-address allocation must be recorded in the authoritative inventory and must not be assumed from the architecture counts.
+The AWS VPC has not yet been created. Before adoption, check 10.77.0.0/24 against the planned AWS VPC CIDR, office/home LANs, other VPNs, peering and any future connected networks. The remote hosts are standalone public-facing servers, so no remote private subnet needs to be routed through WireGuard; nevertheless, inspect each host's local routes and Docker bridge networks during onboarding for address conflicts. Change the proposed range if it overlaps. The host-to-address allocation must be recorded in the authoritative inventory and must not be assumed from the architecture counts.
 
 Peer restrictions:
 - Generate a unique key pair per host. Never clone a private key between servers.
 - On the hub, each peer gets only its assigned remote /32 in AllowedIPs.
 - On each remote host, initially route only the hub VPN address (10.77.0.1/32) and required central service destinations through the tunnel.
 - Do not configure 0.0.0.0/0, IPv6 default routes, broad remote subnets, site-to-site transit, or remote-to-remote access in the initial rollout.
-- Configure PersistentKeepalive = 25 on remote peers when required to maintain NAT mappings. The hub accepts authenticated peers whose public endpoint changes.
+- Configure PersistentKeepalive = 25 only if required by the remote network path or firewall behavior; these servers are standalone public-facing hosts with static public IPv4 addresses. The hub's AWS Security Group can use the ten verified static source IPv4 /32s. WireGuard peer authentication remains independent of the IP allowlist.
 - No IP forwarding or NAT is needed when spokes only access services hosted on the hub.
 
 ## 4. AWS and host firewall policy
@@ -99,7 +99,7 @@ WireGuard encrypts the network path but does not replace service authentication,
 
 ## 8. Implementation sequence (not yet executed)
 
-1. Discovery/design: collect remote network ranges and office/home/existing VPN ranges; select a non-overlapping AWS VPC CIDR/subnet layout and WireGuard overlay before provisioning. Verify the existing Elastic IP allocation and plan association with the future EC2 hub; confirm UDP egress, firewall ownership, hostnames and server-to-project mapping.
+1. Discovery/design: confirm office/home/existing VPN ranges; select a non-overlapping AWS VPC CIDR/subnet layout and WireGuard overlay before provisioning. Since remote hosts are standalone public-facing servers, no remote site subnet routing is needed; inspect their local routes and Docker bridge ranges during onboarding. Verify the existing Elastic IP allocation and plan association with the future EC2 hub; confirm UDP egress, firewall ownership, hostnames and server-to-project mapping.
 2. Inventory: assign stable IDs, VPN /32 addresses, architecture, owners and environment labels to all ten hosts.
 3. Staging: validate WireGuard package/version and kernel support on central ARM64 and representative remote ARM64/AMD64 hosts.
 4. Hub: prepare configuration and security-group/firewall change plan; review management lockout and rollback steps.
@@ -111,7 +111,7 @@ WireGuard encrypts the network path but does not replace service authentication,
 ## 9. Preconditions / open decisions
 
 - Actual central EC2 instance type, kernel architecture, and exact Elastic IP value/association (Elastic IP existence is user-confirmed).
-- AWS VPC CIDR and remote network CIDRs; confirmation the proposed VPN range is non-overlapping.
+- AWS VPC CIDR and any office/home/existing VPN ranges; confirmation the proposed VPN range is non-overlapping. Remote hosts are standalone public-facing servers; inspect local routes/Docker bridges for conflicts, but no remote private subnet routing is planned.
 - Per-host names, architecture, project/environment mapping, the literal static public IPv4 egress address, and ownership.
 - UDP egress policy and AWS Security Group/firewall change authority.
 - Private DNS and TLS certificate/CA approach; telemetry endpoint authentication.
