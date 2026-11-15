@@ -127,7 +127,29 @@
     creates: /etc/obstack/pki/central.crt
   no_log: true
 
-- name: Restrict certificate and CSR permissions
+- name: Verify generated central certificate chains to the private CA
+  ansible.builtin.command:
+    argv:
+      - openssl
+      - verify
+      - -CAfile
+      - /etc/obstack/pki/ca.crt
+      - /etc/obstack/pki/central.crt
+  changed_when: false
+
+- name: Verify central certificate is valid for at least 30 more days
+  ansible.builtin.command:
+    argv:
+      - openssl
+      - x509
+      - -checkend
+      - "2592000"
+      - -noout
+      - -in
+      - /etc/obstack/pki/central.crt
+  changed_when: false
+
+- name: Restrict certificate permissions
   ansible.builtin.file:
     path: "{{ item }}"
     owner: root
