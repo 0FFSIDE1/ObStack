@@ -1,5 +1,6 @@
 name: Validate configuration
 on:
+  workflow_call:
   push:
     branches: [main, "feat/**"]
   pull_request:
