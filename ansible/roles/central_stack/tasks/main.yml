@@ -39,7 +39,7 @@
     that:
       - hostvars[item].obstack_alloy_metrics_password | default('') | length >= 24
       - hostvars[item].obstack_alloy_logs_password | default('') | length >= 24
-    fail_msg: "Each enrolled monitored host needs unique usernames and 24+ character metrics/logs passwords stored in Ansible Vault."
+    fail_msg: "Each enrolled monitored host needs unique usernames and 24+ character metrics/logs passwords exported through the Ansible controller environment."
   loop: "{{ groups['monitored'] | default([]) }}"
   no_log: true
 
