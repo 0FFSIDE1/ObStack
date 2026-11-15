@@ -1,0 +1,23 @@
+all:
+  children:
+    observability:
+      hosts:
+        obstack-central:
+          ansible_host: REPLACE_WITH_CENTRAL_MANAGEMENT_ADDRESS
+          obstack_arch: arm64
+    monitored:
+      hosts:
+        remote-01:
+          ansible_host: REPLACE_WITH_VERIFIED_PUBLIC_IPV4
+          obstack_arch: amd64
+          obstack_vpn_ip: 10.77.0.11
+          project: REPLACE_ME
+          environment: production
+        remote-06:
+          ansible_host: REPLACE_WITH_VERIFIED_PUBLIC_IPV4
+          obstack_arch: arm64
+          obstack_vpn_ip: 10.77.0.16
+          project: REPLACE_ME
+          environment: production
+# Expand only after verifying all hostnames, IPs, architectures, ownership and SSH access.
+# Never store WireGuard private keys, passwords, tokens or preshared keys in this file.
