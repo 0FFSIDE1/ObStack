@@ -24,6 +24,8 @@ jobs:
   validate:
     name: Syntax, lint and Compose validation
     runs-on: ubuntu-latest
+    env:
+      ANSIBLE_CONFIG: ${{ github.workspace }}/ansible.cfg
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
