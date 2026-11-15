@@ -12,7 +12,7 @@ The initial repository implementation is on branch `codex/phase-1-discovery-arch
 - Prometheus target retention is configured for 30 days with a 3 GB TSDB size cap.
 - Loki retention is configured for 20 days.
 - Grafana datasources are provisioned from files.
-- Ansible includes a read-only host preflight and a secret-free example inventory.
+- Ansible includes read-only discovery plus an explicitly gated central-host provisioning workflow (security baseline, Docker, private PKI certificate generation, Compose deployment and readiness checks).
 
 See [implementation status](docs/implementation-status.md), [architecture](docs/architecture.md), [network design](docs/network-architecture.md), and [implementation plan](docs/implementation-plan.md).
 
