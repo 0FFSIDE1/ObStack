@@ -1,0 +1,104 @@
+name: Validate and apply GitHub governance
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Apply the active rulesets after validation (requires environment approval)"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-governance
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate ruleset configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out governance configuration
+        uses: actions/checkout@v4
+
+      - name: Validate JSON and required policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in .github/rulesets/*.json; do
+            jq -e '
+              .name and
+              (.target == "branch" or .target == "tag") and
+              (.source == "0FFSIDE1/ObStack") and
+              (.enforcement == "active") and
+              (.conditions.ref_name.include | length > 0) and
+              (.rules | length > 0)
+            ' "$file" >/dev/null
+            echo "Validated $file"
+          done
+          test "$(find .github/rulesets -maxdepth 1 -name '*.json' | wc -l)" -eq 3
+
+      - name: Confirm repository identity and inspect current rulesets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          actual="$(gh api repos/0FFSIDE1/ObStack --jq '.full_name + "|" + (.private|tostring)')"
+          test "$actual" = "0FFSIDE1/ObStack|false"
+          gh api repos/0FFSIDE1/ObStack/rulesets --jq '.[] | [.id, .name, .enforcement] | @tsv' || true
+
+  apply:
+    name: Apply repository rulesets
+    needs: validate
+    if: ${{ inputs.apply }}
+    runs-on: ubuntu-latest
+    environment: github-governance
+    permissions:
+      contents: read
+    steps:
+      - name: Check out approved governance configuration
+        uses: actions/checkout@v4
+
+      - name: Require administrator token
+        env:
+          GH_TOKEN: ${{ secrets.OBSTACK_GOVERNANCE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${GH_TOKEN:-}" ]]; then
+            echo "::error::Configure OBSTACK_GOVERNANCE_TOKEN as an environment secret on github-governance."
+            exit 1
+          fi
+          gh auth status
+
+      - name: Create or update the three rulesets
+        env:
+          GH_TOKEN: ${{ secrets.OBSTACK_GOVERNANCE_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint="repos/0FFSIDE1/ObStack/rulesets"
+          for file in .github/rulesets/*.json; do
+            name="$(jq -r '.name' "$file")"
+            id="$(gh api "$endpoint" --jq --arg name "$name" '.[] | select(.name == $name) | .id' | head -n 1 || true)"
+            if [[ -n "$id" ]]; then
+              echo "Updating ruleset: $name (id $id)"
+              gh api --method PUT "$endpoint/$id" --input "$file" >/dev/null
+            else
+              echo "Creating ruleset: $name"
+              gh api --method POST "$endpoint" --input "$file" >/dev/null
+            fi
+          done
+
+      - name: Verify all configured rulesets are active
+        env:
+          GH_TOKEN: ${{ secrets.OBSTACK_GOVERNANCE_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh api repos/0FFSIDE1/ObStack/rulesets > "$RUNNER_TEMP/rulesets.json"
+          for name in obstack-main-release-protection obstack-version-tag-creation obstack-version-tags-immutable; do
+            jq -e --arg name "$name" '.[] | select(.name == $name and .enforcement == "active")' "$RUNNER_TEMP/rulesets.json" >/dev/null
+            echo "Confirmed active: $name"
+          done
