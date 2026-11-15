@@ -27,7 +27,10 @@ prometheus.remote_write "obstack" {
   }
   external_labels = {
     platform = "obstack",
-    host = "{{ inventory_hostname }}",
+    server = "{{ inventory_hostname }}",
+    service = "host",
+    role = "{{ obstack_server_role | default('server') }}",
+    region = "{{ obstack_region | default('unknown') }}",
     project = "{{ project | default('unassigned') }}",
     environment = "{{ environment | default('unknown') }}",
   }
