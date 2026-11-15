@@ -10,11 +10,12 @@
 - Prometheus 30-day time retention with a 3 GB TSDB size cap; Loki 20-day retention.
 - Prometheus remote-write receiver enabled explicitly; Nginx exposes only the authenticated /api/v1/write route.
 - Nginx exposes authenticated Loki /loki/api/v1/push and sets the configured single-node tenant header.
-- Separate per-host metrics and logs Basic Auth credentials, stored in Ansible Vault and provisioned as bcrypt htpasswd entries; secrets are not committed.
+- Separate per-host metrics and logs Basic Auth credentials, stored in Ansible Vault and provisioned as bcrypt htpasswd entries; Nginx runs unprivileged and reads its TLS key and auth hashes through a dedicated host group; secrets are not committed.
 - Grafana datasource provisioning, conservative alert rules and Blackbox probe modules.
 - Secret-free example environment and Ansible inventory.
 - Read-only Ubuntu/architecture preflight and Docker/Alloy discovery that avoids container environment variables and secret values.
-- First-pass native WireGuard hub/spoke Ansible role and explicitly gated mutating playbook; peer address uniqueness and input validation added.
+- First-pass native WireGuard hub/spoke Ansible role and explicitly gated mutating playbook; peer address/key uniqueness, keypair validation, actual hub-derived AllowedIPs and static peer egress validation added.
+- Central UFW UDP 51820 ingress is scoped to the verified static public egress IPv4 for each enrolled spoke; AWS Security Group allowlisting remains a separate manual prerequisite.
 - First-pass central-host Ansible workflow: Ubuntu 24.04 ARM64 checks, Africa/Lagos timezone, baseline security configuration, UFW/fail2ban/unattended upgrades, official Docker Engine/Compose installation, private CA and WireGuard-IP server certificate generation, Docker Compose deployment/startup and readiness checks.
 - Gated public-CA distribution playbook; transfers only ca.crt, never private keys.
 - Read-only central validation playbook for Compose services, readiness endpoints, Prometheus receiver flag, TLS trust and authenticated/unauthenticated ingress behavior.
