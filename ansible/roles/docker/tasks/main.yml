@@ -33,6 +33,23 @@
     state: present
     update_cache: true
 
+- name: Configure Docker daemon logging and live restore
+  ansible.builtin.copy:
+    dest: /etc/docker/daemon.json
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      {
+        "live-restore": true,
+        "log-driver": "json-file",
+        "log-opts": {
+          "max-size": "10m",
+          "max-file": "3"
+        }
+      }
+  notify: Restart Docker
+
 - name: Enable and start Docker
   ansible.builtin.systemd:
     name: docker
