@@ -25,12 +25,31 @@ The deployment environment is otherwise **not yet discovered**. Docker/Compose v
 - Docker Engine + Docker Compose orchestrate Prometheus, Grafana, Loki, Alertmanager, Blackbox Exporter, and Nginx TLS reverse proxy. All selected central images must explicitly support `linux/arm64`; pin verified immutable digests where possible.
 - Persistent storage is mounted for Prometheus TSDB, Loki data/index/compactor state, Grafana state, and Alertmanager state.
 - Prometheus scrapes central service metrics and centrally reachable exporters. Remote servers behind NAT/private networks use Alloy remote-write for metrics rather than requiring inbound scrape reachability.
-- Alloy on remote Linux hosts collects host/container/application telemetry and forwards metrics and logs over authenticated private connectivity (prefer WireGuard) to dedicated secured endpoints.
+- Alloy on remote Linux hosts collects host/container/application telemetry and forwards metrics and logs over the selected authenticated WireGuard private network to dedicated secured endpoints.
 - Alertmanager is the primary notification router for Prometheus-originated alerts. Grafana/Loki alerting is only enabled if a clear integration path avoids competing notification pipelines.
 - Grafana provisions data sources and dashboards from version-controlled files. Dashboard variables cover project, environment, server, service, and region.
 - Ansible provisions hosts and installs/configures agents and only service-relevant exporters. Remote-agent roles must be architecture-aware and support both ARM64 and AMD64.
 
 Remote nodes run Alloy, Node Exporter, cAdvisor and only relevant optional exporters. Applications expose Prometheus-compatible metrics. Logs from journald/syslog, Docker, Nginx and application files are filtered/redacted before forwarding. Confirm ARM64 and AMD64 support for every selected exporter and pin compatible multi-platform image digests where available.
+
+## 2.1 Selected private network: WireGuard
+
+**Decision:** use native, self-managed WireGuard in a hub-and-spoke topology. The user selected WireGuard and confirmed the workloads are non-commercial. Do not introduce Tailscale, Headscale, a paid VPN control plane, or a separate VPN appliance in the initial design. WireGuard has no per-device software licence fee; AWS public IPv4, data transfer, and any added infrastructure may still incur cloud charges.
+
+- Central AWS EC2 is the hub and listens on UDP 51820; each remote host initiates an outbound connection, supporting NATed/dynamic-address sites.
+- Proposed overlay: 10.77.0.0/24, central 10.77.0.1, remote peers 10.77.0.11–10.77.0.20. This is provisional; check all VPC, office, site and existing VPN routes for overlap before assigning it.
+- Assign one unique /32 tunnel address and unique private/public key pair to each remote server. Maintain an explicit host-to-address/architecture/project inventory; do not infer host assignments from architecture counts.
+- Remote peer AllowedIPs should initially include only the central VPN address (10.77.0.1/32) and only required central services. Central peer AllowedIPs should contain only that peer's assigned /32. No broad 0.0.0.0/0 routes, site-to-site routing, or remote-to-remote access in the initial phase.
+- Configure PersistentKeepalive = 25 on remote peers where NAT mapping maintenance is needed. The hub should accept peers with dynamic endpoint addresses and learn endpoints from authenticated packets.
+- AWS Security Group: permit inbound UDP 51820 to the hub. Initially the source may need to be 0.0.0.0/0 because remote public IPs are not yet known; tighten to known static source ranges where practical. Do not open telemetry/exporter ports publicly. Confirm whether the EC2 instance uses an Elastic IP or another stable endpoint.
+- Host firewall: allow WireGuard UDP on the public interface; allow only required telemetry and management traffic on wg0; deny unsolicited access to exporters and internal service ports on public interfaces. Account for Docker's iptables/nftables behavior (published Docker ports can bypass simple UFW rules); validate effective rules rather than assuming UFW alone protects containers.
+- Keep Prometheus, Loki and exporters private. Expose remote-write/log-push ingress only through a deliberate VPN-bound listener or an authenticated TLS reverse-proxy endpoint reachable over wg0. Use authentication/authorization and TLS verification in addition to VPN encryption. Do not enable Prometheus remote-write receiver or Loki unauthenticated push on a public interface.
+- No IP forwarding or NAT is required for the initial hub-and-spoke design if remote peers only reach services on the central host. Enable routing only through a separately reviewed change if a future requirement needs transit between networks.
+- Store each peer's private key only on its own host with restrictive permissions; central inventory should contain public keys and non-secret metadata only. Do not commit private keys, preshared keys, tokens, or rendered secrets. Use Ansible Vault or an approved secret store for sensitive deployment inputs.
+- Monitoring: alert on missing server telemetry/peer health, handshake age, tunnel interface status, central UDP reachability, and certificate expiry. A recent handshake alone is not proof that metrics/log ingestion is healthy.
+- Recovery: document peer revocation/key rotation, central hub replacement, configuration backup, and staged re-enrolment. Test host reboot, network interruption, NAT rebinding, and key revocation before fleet rollout.
+
+This design intentionally makes the central EC2 host a single VPN and observability hub; it is not highly available. If it is down, remote agents must buffer/retry within configured limits and resume forwarding after recovery. Confirm Alloy queue/buffer behavior and disk bounds during testing.
 
 ## 3. Telemetry flows
 
@@ -53,7 +72,7 @@ Required low-cardinality identity labels: `project`, `environment`, `server`, `i
 ## 5. Trust boundaries and security principles
 
 - Public edge: Nginx HTTPS for approved Grafana access and, only if required, secured telemetry endpoints.
-- Private telemetry plane: preferably WireGuard with peer allowlists and host firewall rules.
+- Private telemetry plane: self-managed WireGuard hub-and-spoke, with unique per-server keys, /32 peer routes, least-privilege AllowedIPs, host firewall rules and no public exporter/telemetry ports.
 - Docker service plane: dedicated Compose networks; internal services and exporters remain private.
 - Management plane: SSH/Ansible restricted to approved sources.
 - Secrets: Docker secrets or protected files; encrypted off-host backup; placeholders only in `.env.example`.
@@ -75,7 +94,7 @@ Use Ansible for repeatable idempotent provisioning. Do not modify production hos
 
 1. Confirm EC2 storage details (EBS volume type; root-volume capacity); host expansion is possible but not currently approved/specified.
 2. Verify central EC2 instance type/kernel architecture and map each of the ten remote servers to ARM64 or AMD64; gather project/server/service inventory.
-3. VPN/network topology, allowed peers, firewall owner and telemetry endpoint reachability.
+3. WireGuard rollout prerequisites: confirm VPC CIDR does not overlap the proposed VPN range, verify central public/static IP and UDP ingress policy, identify firewall ownership, and approve peer inventory. The selected design is documented in docs/network-architecture.md.
 4. DNS and TLS issuer/renewal.
 5. Authentication, secrets backend, RBAC and MFA expectations.
 6. Notification destinations and routing owners.
