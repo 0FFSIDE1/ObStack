@@ -43,7 +43,18 @@ def main():
     for index, (name, source, net) in enumerate(known):
         for other_name, other_source, other_net in known[index + 1:]:
             if net.overlaps(other_net):
-                conflicts.append((name, source, str(net), other_name, other_source, str(other_net)))
+                # AWS subnets are expected to be contained by their parent VPC.
+                expected_subnet_parent = (
+                    source == "AWS subnet" and other_source in ("AWS VPC", "AWS VPC association")
+                    and other_net.supernet_of(net)
+                ) or (
+                    other_source == "AWS subnet" and source in ("AWS VPC", "AWS VPC association")
+                    and net.supernet_of(other_net)
+                )
+                # Exact duplicate records can arise from the explicitly approved VPC CIDR.
+                exact_duplicate = net == other_net
+                if not expected_subnet_parent and not exact_duplicate:
+                    conflicts.append((name, source, str(net), other_name, other_source, str(other_net)))
 
     clean, candidate_conflicts = [], []
     for candidate in candidates:
