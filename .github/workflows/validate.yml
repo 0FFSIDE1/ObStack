@@ -1,0 +1,41 @@
+name: Validate configuration
+on:
+  push:
+    branches: [main, "codex/**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Docker Compose plugin
+        run: |
+          docker compose version
+      - name: Validate Compose model
+        run: |
+          cp .env.example .env
+          docker compose config --quiet
+      - name: Validate Prometheus configuration and rules
+        run: |
+          docker run --rm --platform linux/amd64 \
+            -v "$PWD/prometheus:/etc/prometheus:ro" \
+            --entrypoint promtool prom/prometheus:v3.7.3 \
+            check config /etc/prometheus/prometheus.yml
+          docker run --rm --platform linux/amd64 \
+            -v "$PWD/prometheus:/etc/prometheus:ro" \
+            --entrypoint promtool prom/prometheus:v3.7.3 \
+            check rules /etc/prometheus/rules/platform.yml
+      - name: Validate Alertmanager configuration
+        run: |
+          docker run --rm --platform linux/amd64 \
+            -v "$PWD/alertmanager:/etc/alertmanager:ro" \
+            --entrypoint amtool prom/alertmanager:v0.28.1 \
+            check-config /etc/alertmanager/alertmanager.yml
+      - name: Validate Loki configuration
+        run: |
+          docker run --rm --platform linux/amd64 \
+            -v "$PWD/loki:/etc/loki:ro" \
+            grafana/loki:3.5.7 \
+            -config.file=/etc/loki/config.yml -verify-config
