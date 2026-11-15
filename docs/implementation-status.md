@@ -13,6 +13,7 @@
 - Separate per-host metrics and logs Basic Auth credentials, stored in Ansible Vault and provisioned as bcrypt htpasswd entries; Nginx runs unprivileged and reads its TLS key and auth hashes through a dedicated host group; secrets are not committed.
 - Grafana datasource provisioning plus a file-provisioned central platform overview dashboard (Prometheus scrape status, TSDB storage/series/ingestion, scrape duration, reload health and targets); conservative alert rules and Blackbox probe modules.
 - Prometheus alert rules for missing scrape targets, failed config reloads, and warning/critical thresholds near the configured 3 GB TSDB storage cap.
+- Optional HTTPS Alertmanager webhook delivery via OBSTACK_ALERTMANAGER_WEBHOOK_URL from the Ansible controller environment. The rendered configuration is group-readable only by the dedicated container group; CI validates sink and webhook configurations with amtool.
 - Secret-free example environment and Ansible inventory.
 - Read-only Ubuntu/architecture preflight and Docker/Alloy discovery that avoids container environment variables and secret values.
 - First-pass native WireGuard hub/spoke Ansible role and explicitly gated mutating playbook; peer address/key uniqueness, keypair validation, actual hub-derived AllowedIPs and static peer egress validation added.
@@ -34,10 +35,10 @@
 - Host-specific Compose adoption for existing Alloy containers; config/secret/CA/host metric mounts.
 - Actual log sources (Docker socket, journald or files) per server.
 - Remote telemetry acceptance, payload delivery and authentication tests from AMD64 and ARM64 pilot hosts.
-- DNS/certificate lifecycle automation, additional project/application dashboards, exporters, alert notification endpoints (the current Alertmanager default receiver is a sink pending user-selected destinations).
+- DNS/certificate lifecycle automation, additional project/application dashboards, exporter deployment, and destination-specific alert routes. Generic webhook delivery is implemented but no actual endpoint has been provided; if unset, Alertmanager intentionally uses a sink.
 - Backup/restore, off-host storage, RPO/RTO and DR tests.
 - ISO/IEC 27002:2022 evidence mapping, security review and native ARM64 runtime validation.
-- Host filesystem/free-space and service-level capacity alerts; current Prometheus TSDB-cap alerts are implemented but do not indicate OS/disk free-space headroom.
+- Host filesystem/free-space and service-level capacity alerts; current Prometheus TSDB block-cap alerts are implemented but do not indicate OS/disk free-space headroom.
 - Capacity validation against measured ingestion volume.
 
 ## Safety and capacity
