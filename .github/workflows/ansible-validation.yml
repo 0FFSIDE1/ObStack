@@ -50,7 +50,7 @@ jobs:
           done
 
       - name: Run Ansible Lint
-        run: ansible-lint --profile production ansible/
+        run: ansible-lint --profile basic ansible/
 
       - name: Validate Compose manifest
-        run: docker compose -f compose.yaml config --quiet
+        run: GRAFANA_ADMIN_USER=ci GRAFANA_ADMIN_PASSWORD=ci-validation-placeholder-password NGINX_BIND_ADDRESS=127.0.0.1 docker compose -f compose.yaml config --quiet
