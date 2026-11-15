@@ -36,6 +36,12 @@
           - obstack_grafana_admin_user | default('') | length > 0
           - obstack_grafana_admin_password | default('') | length >= 24
         fail_msg: "Set obstack_grafana_admin_user and a 24+ character obstack_grafana_admin_password in Ansible Vault."
+    - name: Require verified static public egress IPv4 addresses for enrolled WireGuard spokes
+      ansible.builtin.assert:
+        that:
+          - hostvars[item].obstack_wg_peer_public_ip | default('') is ansible.utils.ipv4
+        fail_msg: "Set each enrolled host's obstack_wg_peer_public_ip to its verified static public egress IPv4 address."
+      loop: "{{ groups['monitored'] | default([]) }}"
     - name: Require vaulted per-host telemetry credentials for the enrolled fleet
       ansible.builtin.assert:
         that:
