@@ -10,14 +10,16 @@
 - [x] Record user-provided initial central resources (AWS EC2 2 vCPU / 2 GB RAM / 14 GB disk, fixed for now but potentially expandable) and retention goals (30 days metrics / 20 days logs); actual host state and capacity validation remain pending.
 - [x] Record user-confirmed central OS as Ubuntu 24.04 LTS; host state remains unverified.
 - [x] Record initial monitoring scope as approximately 5–10 projects and 6 remote servers; project names, project-to-server mapping, environments, and workload inventory remain pending.
+- [x] Record all six remote servers as Ubuntu 24.04 LTS on a mixed ARM64 (`arm64`) and AMD64 (`amd64`) fleet; per-host architecture mapping and central EC2 architecture remain pending.
 - [ ] Confirm remote OS, networking, TLS/DNS, secrets, backups, projects and data-volume expectations.
 - [ ] Review and approve architecture.
 
 ## Phase 2 — Implementation plan and safe boundaries
 
 - [x] Define phases, dependencies and validation gates in this document.
+- [x] Define mixed-architecture requirement: Ansible roles and remote agent/exporter artifacts must support both `linux/arm64` and `linux/amd64`, select architecture-specific binaries safely, and validate both before fleet rollout.
 - [ ] Confirm staging environment and production-change authorization boundary.
-- [ ] Choose exact supported upstream image versions and record upgrade strategy after compatibility/security review.
+- [ ] Choose exact supported upstream image versions and record upgrade strategy after compatibility/security review; verify multi-platform manifests and pin immutable digests where possible.
 
 ## Phase 3 — Central platform
 
@@ -32,15 +34,17 @@
 
 ## Phase 4 — Remote agent and exporter patterns
 
-- [ ] Alloy metrics/log pipelines with authenticated TLS forwarding and retries/buffering appropriate to supported components.
-- [ ] Node Exporter and cAdvisor with documented host mounts and least privilege.
-- [ ] Optional PostgreSQL/MySQL/Redis/Nginx/process exporters only for applicable workloads.
+- [ ] Alloy metrics/log pipelines with authenticated TLS forwarding and retries/buffering appropriate to supported components; verify agent release support on ARM64 and AMD64.
+- [ ] Node Exporter and cAdvisor with documented host mounts and least privilege; validate binaries/images for both architectures.
+- [ ] Optional PostgreSQL/MySQL/Redis/Nginx/process exporters only for applicable workloads; confirm each selected exporter supports each deployed architecture.
 - [ ] Application instrumentation examples for FastAPI, Laravel, Nginx, PostgreSQL and Redis.
 - [ ] Label normalization, sensitive-log filtering/redaction, and cardinality policy tests.
+- [ ] Run representative ARM64 and AMD64 staging onboarding and integration tests before fleet-wide rollout.
 
 ## Phase 5 — Ansible automation
 
 - [ ] Inventory, group/host vars, common/security/Docker/observability/Nginx/firewall/backup/validation roles.
+- [ ] Inventory architecture facts and normalized architecture variables; fail safely on unsupported architectures rather than downloading the wrong binary.
 - [ ] Central deployment, remote onboarding/update, exporter enablement, validation and agent removal playbooks.
 - [ ] Idempotency/syntax/lint checks; avoid unnecessary application config changes.
 
@@ -60,6 +64,7 @@
 
 - [ ] Compose, Prometheus, rules, Alertmanager, Loki, Alloy, Nginx, Grafana provisioning and Ansible validation.
 - [ ] Integration checks: metrics/logs/query paths, labels, alert routes, persistent data, backup restore.
+- [ ] Architecture matrix checks: verify multi-platform image manifests, checksums, package availability and successful agent startup on ARM64 and AMD64.
 - [ ] Security checks: exposed ports, credentials, TLS verification, privileges/mounts, access controls, image vulnerabilities and log leakage.
 - [ ] Controlled staging failure simulation and recovery tests.
 - [ ] Produce evidence-based test report with actual command output and pass/fail statuses; no fabricated results.
