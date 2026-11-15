@@ -1,0 +1,24 @@
+---
+- name: Read-only ObStack host preflight
+  hosts: all
+  gather_facts: true
+  become: false
+  tasks:
+    - name: Require Ubuntu 24.04
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == "Ubuntu"
+          - ansible_distribution_version == "24.04"
+        fail_msg: "This initial implementation targets Ubuntu 24.04 LTS only."
+    - name: Require supported CPU architecture
+      ansible.builtin.assert:
+        that:
+          - ansible_architecture in ["aarch64", "x86_64"]
+        fail_msg: "Only ARM64 (aarch64) and AMD64 (x86_64) are supported."
+    - name: Report host facts without changing the host
+      ansible.builtin.debug:
+        msg:
+          hostname: "{{ inventory_hostname }}"
+          architecture: "{{ ansible_architecture }}"
+          distribution: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
+          kernel: "{{ ansible_kernel }}"
