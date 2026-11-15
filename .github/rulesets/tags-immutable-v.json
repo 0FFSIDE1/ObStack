@@ -1,7 +1,6 @@
 {
   "name": "obstack-version-tags-immutable",
   "target": "tag",
-  "source": "0FFSIDE1/ObStack",
   "enforcement": "active",
   "conditions": {
     "ref_name": {
