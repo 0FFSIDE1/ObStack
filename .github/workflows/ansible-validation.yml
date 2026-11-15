@@ -54,7 +54,7 @@ jobs:
         run: ansible-lint --profile basic ansible/
 
       - name: Validate Compose manifest
-        run: GRAFANA_ADMIN_USER=ci GRAFANA_ADMIN_PASSWORD=ci-validation-placeholder-password NGINX_BIND_ADDRESS=127.0.0.1 docker compose -f compose.yaml config --quiet
+        run: GRAFANA_ADMIN_USER=ci GRAFANA_ADMIN_PASSWORD=ci-validation-placeholder-password NGINX_BIND_ADDRESS=127.0.0.1 NGINX_AUTH_GID=20000 docker compose -f compose.yaml config --quiet
 
       - name: Validate Nginx configuration
         run: |
@@ -66,6 +66,8 @@ jobs:
             -subj "/CN=obstack-ci"
           touch /tmp/obstack-nginx/auth/metrics.htpasswd
           touch /tmp/obstack-nginx/auth/logs.htpasswd
+          chgrp 20000 /tmp/obstack-nginx/tls/central.key /tmp/obstack-nginx/auth/metrics.htpasswd /tmp/obstack-nginx/auth/logs.htpasswd
+          chmod 0640 /tmp/obstack-nginx/tls/central.key /tmp/obstack-nginx/auth/metrics.htpasswd /tmp/obstack-nginx/auth/logs.htpasswd
           docker run --rm --entrypoint nginx \
             -v "$PWD/nginx/conf.d:/etc/nginx/conf.d:ro" \
             -v /tmp/obstack-nginx/tls/central.crt:/etc/nginx/tls/central.crt:ro \
