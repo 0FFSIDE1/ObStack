@@ -1,7 +1,6 @@
 {
   "name": "obstack-version-tag-creation",
   "target": "tag",
-  "source": "0FFSIDE1/ObStack",
   "enforcement": "active",
   "bypass_actors": [
     {
