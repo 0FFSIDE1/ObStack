@@ -22,6 +22,8 @@
         that:
           - obstack_wg_vpn_ip | default('') | length > 0
           - obstack_wg_vpn_ip is ansible.utils.ipv4
+          - obstack_ssh_allowed_cidr | default('') | length > 0
+          - obstack_ssh_allowed_cidr is ansible.utils.ipv4
         fail_msg: "Set obstack_wg_vpn_ip to the approved central WireGuard IPv4 address."
     - name: Require vaulted Grafana administrator credentials
       ansible.builtin.assert:
