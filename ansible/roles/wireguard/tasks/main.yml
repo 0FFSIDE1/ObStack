@@ -1,15 +1,69 @@
 ---
+- name: Require exactly one hub and at least one enrolled spoke
+  ansible.builtin.assert:
+    that:
+      - groups[obstack_wg_hub_group] | length == 1
+      - groups[obstack_wg_spoke_group] | length > 0
+    fail_msg: "Inventory must define exactly one observability hub and at least one monitored spoke."
+
+- name: Require a unique and complete spoke address map on the hub
+  ansible.builtin.set_fact:
+    obstack_wg_peer_ips: "{{ groups[obstack_wg_spoke_group] | map('extract', hostvars, 'obstack_wg_vpn_ip') | list }}"
+  when: inventory_hostname in groups[obstack_wg_hub_group]
+
+- name: Reject duplicate spoke overlay addresses on the hub
+  ansible.builtin.assert:
+    that:
+      - obstack_wg_peer_ips | length == obstack_wg_peer_ips | unique | list | length
+      - obstack_wg_peer_ips | length == groups[obstack_wg_spoke_group] | length
+    fail_msg: "Every enrolled spoke must have a unique, defined WireGuard IPv4 address."
+  when: inventory_hostname in groups[obstack_wg_hub_group]
+
+- name: Validate the local WireGuard identity and address
+  ansible.builtin.assert:
+    that:
+      - obstack_wg_address | default('') | length > 0
+      - obstack_wg_address.split('/') | length == 2
+      - obstack_wg_address.split('/')[0] is ansible.utils.ipv4
+      - obstack_wg_private_key | default('') | length > 0
+      - obstack_wg_public_key | default('') | length > 0
+      - obstack_wg_vpn_ip | default('') is ansible.utils.ipv4
+      - (obstack_wg_address.split('/')[0]) == obstack_wg_vpn_ip
+    fail_msg: "Supply a valid unique local tunnel address and a per-host keypair; keep private keys in Ansible Vault."
+
+- name: Validate hub address prefix and peer metadata
+  ansible.builtin.assert:
+    that:
+      - obstack_wg_address.split('/')[1] | int >= 24
+      - obstack_wg_address.split('/')[1] | int <= 32
+      - hostvars[item].obstack_wg_public_key | default('') | length > 0
+      - hostvars[item].obstack_wg_vpn_ip | default('') is ansible.utils.ipv4
+    fail_msg: "Each spoke needs a public key and a verified unique overlay IPv4 address."
+  loop: "{{ groups[obstack_wg_spoke_group] }}"
+  when: inventory_hostname in groups[obstack_wg_hub_group]
+
+- name: Validate spoke hub endpoint and /32 address
+  ansible.builtin.assert:
+    that:
+      - obstack_wg_address.split('/')[1] == '32'
+      - obstack_wg_endpoint | default('') is match('^[^ ]+:[0-9]+$')
+      - hostvars[groups[obstack_wg_hub_group][0]].obstack_wg_public_key | default('') | length > 0
+    fail_msg: "A spoke requires a /32 tunnel address, the hub public key and the hub public endpoint."
+  when: inventory_hostname in groups[obstack_wg_spoke_group]
+
 - name: Require Ubuntu 24.04
   ansible.builtin.assert:
     that:
       - ansible_distribution == "Ubuntu"
       - ansible_distribution_version == "24.04"
+
 - name: Install WireGuard
   ansible.builtin.apt:
     name: [wireguard, wireguard-tools]
     state: present
     update_cache: true
     cache_valid_time: 3600
+
 - name: Secure WireGuard directory
   ansible.builtin.file:
     path: /etc/wireguard
@@ -17,6 +71,7 @@
     owner: root
     group: root
     mode: "0700"
+
 - name: Render private interface config
   ansible.builtin.template:
     src: wg0.conf.j2
@@ -26,15 +81,24 @@
     mode: "0600"
   no_log: true
   notify: Restart WireGuard
+
+- name: Validate WireGuard config without displaying private key material
+  ansible.builtin.command: "wg-quick strip {{ obstack_wg_interface }}"
+  changed_when: false
+  no_log: true
+
 - name: Enable WireGuard interface
   ansible.builtin.systemd:
     name: "wg-quick@{{ obstack_wg_interface }}"
     enabled: true
     state: started
-- name: Read WireGuard status
+
+- name: Read WireGuard status without exposing key material
   ansible.builtin.command: "wg show {{ obstack_wg_interface }}"
   register: wg_status
   changed_when: false
-- name: Report status without secrets
+  no_log: true
+
+- name: Report WireGuard interface readiness
   ansible.builtin.debug:
-    msg: "{{ wg_status.stdout_lines | reject('search', 'private key') | list }}"
+    msg: "WireGuard interface {{ obstack_wg_interface }} is configured and active; peer handshakes must be verified from the pilot hosts."
