@@ -55,7 +55,7 @@
     dest: "{{ obstack_alloy_config_path }}"
     owner: root
     group: root
-    mode: "0640"
+    mode: "0644"
   when: obstack_alloy_existing_policy == 'adopt'
   notify: Report staged configuration
 # No Docker stop/rm/recreate/restart action is included.
