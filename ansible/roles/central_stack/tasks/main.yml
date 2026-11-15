@@ -38,6 +38,7 @@
     - grafana
     - alertmanager
     - blackbox
+    - nginx
 
 - name: Install Grafana environment file
   ansible.builtin.copy:
