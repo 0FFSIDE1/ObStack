@@ -35,7 +35,7 @@
 
 ## Phase 3 — Central platform
 
-- [ ] Compose stack: Prometheus, Grafana, Loki, Alertmanager, Blackbox Exporter, Nginx; constrain scope/resources for the initial small ARM64 host.
+- [x] Compose stack: Prometheus, Grafana, Loki, Alertmanager and Blackbox Exporter; constrain scope/resources for the initial small ARM64 host. Nginx/TLS ingress remains pending.
 - [ ] Persistent volumes, dedicated networks, health checks, resource controls and hardening.
 - [ ] Prometheus scrape/remote-write receiver config and rule groups; configure 30-day metrics retention and validate TSDB growth.
 - [ ] Loki auth, retention/compaction and storage limits; configure 20-day log retention and measure actual daily ingest/index footprint.
@@ -55,9 +55,11 @@
 
 ## Phase 5 — Ansible automation
 
-- [ ] Inventory, group/host vars, common/security/Docker/observability/Nginx/firewall/backup/validation roles, including wireguard_hub and wireguard_peers roles.
+- [x] Central inventory variable example, controller collection requirements and first-pass common/security/Docker/certificate/central-stack roles.
+- [ ] Complete Nginx ingress, backup, validation roles, and wireguard_hub/wireguard_peers roles.
 - [ ] Inventory architecture facts and normalized architecture variables; fail safely on unsupported architectures rather than downloading the wrong binary. Enforce ARM64-compatible artifacts for central deployment.
-- [ ] Central deployment, WireGuard hub provisioning, remote peer onboarding/update/removal, exporter enablement, validation and agent removal playbooks.
+- [x] First-pass central deployment playbook for baseline host hardening, Docker installation, private CA/server certificate generation, Compose deployment/startup and readiness checks (not yet syntax-checked or run).
+- [ ] WireGuard hub provisioning, remote peer onboarding/update/removal, exporter enablement, validation and agent removal playbooks.
 - [ ] Enforce least-privilege peer AllowedIPs; one unique /32 per remote; no full-tunnel or remote-to-remote routing by default.
 - [ ] Ensure private keys are generated/stored securely and never committed; support peer revocation and rotation.
 - [ ] Idempotency/syntax/lint checks; avoid unnecessary application config changes.
@@ -104,6 +106,7 @@
 - [x] Add secret-free environment and Ansible inventory examples plus read-only Ubuntu 24.04 / architecture preflight.
 - [x] Add GitHub Actions configuration-validation workflow for Compose, Prometheus, Alertmanager and Loki.
 - [ ] Obtain successful CI run and review any validation findings.
+- [ ] Syntax-check and check-mode review the central provisioning playbook; run it only on the approved new central EC2 host after SSH/firewall rollback checks.
 - [ ] Implement WireGuard roles and authenticated TLS remote-ingestion endpoints after VPC/overlay, DNS and certificate decisions.
 - [ ] Implement remote Alloy configuration and controlled ARM64/AMD64 pilot onboarding.
 - [ ] Complete security, backup/restore, ISO evidence mapping and measured capacity validation.
