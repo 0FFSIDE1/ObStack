@@ -7,7 +7,8 @@
 - [x] Inspect linked GitHub repository `0FFSIDE1/ObStack` on default branch `main`.
 - [x] Record current repository baseline and gaps.
 - [x] Draft logical architecture, telemetry flows, trust boundaries, label contract, assumptions and decision list in `docs/architecture.md`.
-- [ ] Confirm central/remote OS, resources, networking, TLS/DNS, secrets, backups, projects and data-volume expectations.
+- [x] Record user-provided initial central resources (2 vCPU / 2 GB RAM / 8–14 GB disk, fixed for now but potentially expandable) and retention goals (30 days metrics / 20 days logs); actual host state and capacity validation remain pending.
+- [ ] Confirm exact central/remote OS, networking, TLS/DNS, secrets, backups, projects and data-volume expectations.
 - [ ] Review and approve architecture.
 
 ## Phase 2 — Implementation plan and safe boundaries
@@ -18,10 +19,11 @@
 
 ## Phase 3 — Central platform
 
-- [ ] Compose stack: Prometheus, Grafana, Loki, Alertmanager, Blackbox Exporter, Nginx.
+- [ ] Compose stack: Prometheus, Grafana, Loki, Alertmanager, Blackbox Exporter, Nginx; constrain scope/resources for the initial small host.
 - [ ] Persistent volumes, dedicated networks, health checks, resource controls and hardening.
-- [ ] Prometheus scrape/remote-write receiver config and rule groups.
-- [ ] Loki auth, retention/compaction and storage limits.
+- [ ] Prometheus scrape/remote-write receiver config and rule groups; configure 30-day metrics retention and validate TSDB growth.
+- [ ] Loki auth, retention/compaction and storage limits; configure 20-day log retention and measure actual daily ingest/index footprint.
+- [ ] Establish host/disk/service capacity alerting, safe free-space headroom, and explicit scale-up/degradation runbook. Requested retention is a target, not guaranteed until telemetry volume is measured.
 - [ ] Grafana datasources, global/project dashboard provisioning and RBAC.
 - [ ] Nginx TLS/auth/access restrictions and certificate lifecycle.
 - [ ] Configuration validation using official tooling.
