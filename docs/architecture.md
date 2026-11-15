@@ -5,6 +5,7 @@ The repository default branch (`main`) currently contains only `README.md`, `.gi
 ### Central host facts supplied by the user
 
 - OS: Ubuntu 24.04 LTS (user-confirmed intended release; host state not independently verified).
+- CPU architecture: **ARM64 / AWS Graviton** (user-confirmed; instance type and actual host state still need verification).
 - Initial resources are fixed for now: 2 vCPU, 2 GB RAM, 14 GB disk on AWS EC2. User says the host could be increased later. The EBS volume type and whether the 14 GB refers to root volume capacity still need confirmation.
 - Docker Engine: not installed.
 - Initial monitoring scope: approximately **5–10 projects** and **6 remote servers** (user-confirmed); exact project names, project-to-server mapping, environments, and workload inventory remain to be discovered.
@@ -12,7 +13,7 @@ The repository default branch (`main`) currently contains only `README.md`, `.gi
 - Requested retention: metrics 30 days; logs 20 days.
 - These are user-provided intended specifications, not independently verified host facts.
 
-**Mixed-architecture requirement:** all remote-agent deployment artifacts, packages, container images and exporter binaries must support both `linux/arm64` and `linux/amd64`. Prefer verified multi-platform upstream container images or architecture-specific package downloads selected from Ansible facts (`ansible_architecture` / normalized Debian architecture). Do not assume a single binary or image manifest works on both. Validate image manifests and checksums for both architectures, and run the same configuration/integration checks on at least one ARM64 and one AMD64 representative before fleet rollout. Keep architecture-specific exceptions explicit in inventory/group vars. The central AWS EC2 host architecture has not been confirmed and must be discovered separately.
+**Architecture compatibility requirement:** the central EC2 host is ARM64, while the remote fleet includes both ARM64 and AMD64. Every central container image and supporting binary must therefore provide a verified `linux/arm64` build. Remote-agent deployment artifacts, packages, container images and exporter binaries must support both `linux/arm64` and `linux/amd64`. Prefer verified multi-platform upstream container images or architecture-specific package downloads selected from Ansible facts (`ansible_architecture` / normalized Debian architecture). Do not assume a single binary or image manifest works on both. Validate image manifests and checksums for the central ARM64 host and both remote architectures, and run configuration/integration checks on at least one ARM64 and one AMD64 remote representative before fleet rollout. Keep architecture-specific exceptions explicit in inventory/group vars. The central instance type and actual kernel architecture must be verified before installation.
 
 **Capacity assessment:** the initial host is severely constrained for a centralized observability platform. The 14 GB EC2 disk must also accommodate OS, Docker image layers, persistent service state, indexes/compaction, and operational headroom; it is unlikely to support meaningful telemetry volume with the requested retention safely. 2 GB RAM limits the number of services and ingest/query headroom. Therefore, treat the initial deployment as a tightly scoped pilot / low-volume MVP, not production-capacity assurance. Retention goals must be validated against measured ingest rates and disk usage; configure hard storage limits, capacity alerts, and a documented degradation/scale-up procedure. Do not silently shorten retention: if the capacity budget is exceeded, alert and require an explicit policy decision or host expansion.
 
@@ -21,7 +22,7 @@ The repository default branch (`main`) currently contains only `README.md`, `.gi
 The deployment environment is otherwise **not yet discovered**. Docker/Compose versions, hostnames/DNS, network/VPN topology, firewall policy, TLS issuer, secrets backend, backup target, and target project/server inventory remain unknown. These must not be assumed.
 ## 2. Proposed logical architecture
 
-- Docker Engine + Docker Compose orchestrate Prometheus, Grafana, Loki, Alertmanager, Blackbox Exporter, and Nginx TLS reverse proxy.
+- Docker Engine + Docker Compose orchestrate Prometheus, Grafana, Loki, Alertmanager, Blackbox Exporter, and Nginx TLS reverse proxy. All selected central images must explicitly support `linux/arm64`; pin verified immutable digests where possible.
 - Persistent storage is mounted for Prometheus TSDB, Loki data/index/compactor state, Grafana state, and Alertmanager state.
 - Prometheus scrapes central service metrics and centrally reachable exporters. Remote servers behind NAT/private networks use Alloy remote-write for metrics rather than requiring inbound scrape reachability.
 - Alloy on remote Linux hosts collects host/container/application telemetry and forwards metrics and logs over authenticated private connectivity (prefer WireGuard) to dedicated secured endpoints.
@@ -68,12 +69,12 @@ Initial single central node with local persistent storage and encrypted off-host
 
 ## 7. Deployment constraints
 
-Use Ansible for repeatable idempotent provisioning. Do not modify production hosts or application configs without explicit authorization and verified inventory. Do not assume Terraform exists. Pin images and maintain upgrade/rollback procedures. Validate with upstream tools and record actual test results only. Initial resource constraints require service/resource limits and conservative component scope, followed by measured scale-up when needed. Remote provisioning must branch safely for `arm64` and `amd64`; test both before broad rollout.
+Use Ansible for repeatable idempotent provisioning. Do not modify production hosts or application configs without explicit authorization and verified inventory. Do not assume Terraform exists. Pin images and maintain upgrade/rollback procedures. Validate with upstream tools and record actual test results only. Initial resource constraints require service/resource limits and conservative component scope, followed by measured scale-up when needed. Central provisioning must enforce ARM64-compatible artifacts; remote provisioning must branch safely for `arm64` and `amd64`; test all required architectures before rollout.
 
 ## 8. Decisions required
 
 1. Confirm EC2 storage details (EBS volume type; root-volume capacity); host expansion is possible but not currently approved/specified.
-2. Confirm central EC2 CPU architecture, and map each of the six remote servers to ARM64 or AMD64; gather project/server/service inventory.
+2. Verify central EC2 instance type/kernel architecture and map each of the six remote servers to ARM64 or AMD64; gather project/server/service inventory.
 3. VPN/network topology, allowed peers, firewall owner and telemetry endpoint reachability.
 4. DNS and TLS issuer/renewal.
 5. Authentication, secrets backend, RBAC and MFA expectations.
@@ -90,6 +91,6 @@ Use Ansible for repeatable idempotent provisioning. Do not modify production hos
 - Storage/resource sizing reconciled with observed telemetry volume and target retention; explicit capacity alerting enabled.
 - Retention/privacy approved.
 - Secure remote ingestion tested in staging.
-- Agent and exporter compatibility verified on both ARM64 and AMD64.
+- Central ARM64 and remote ARM64/AMD64 image, package and binary compatibility verified.
 - Backup restoration demonstrated.
 - Security/configuration checks pass and residual risks documented.
