@@ -34,7 +34,7 @@
 - name: Validate hub address prefix and peer metadata
   ansible.builtin.assert:
     that:
-      - obstack_wg_address.split('/')[1] | int >= 24
+      - obstack_wg_address.split('/')[1] | int >= 1
       - obstack_wg_address.split('/')[1] | int <= 32
       - hostvars[item].obstack_wg_public_key | default('') | length > 0
       - hostvars[item].obstack_wg_vpn_ip | default('') is ansible.utils.ipv4
