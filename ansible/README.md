@@ -7,6 +7,7 @@ The inventory example is intentionally incomplete. Copy it to inventory/hosts.ym
 All sensitive Ansible values are read from the controller process environment through ansible/group_vars/all/env.yml. Required variables:
 
 - OBSTACK_GRAFANA_ADMIN_USER
+- OBSTACK_ALERTMANAGER_WEBHOOK_URL (optional; must be HTTPS; unset keeps alerts on the non-delivery sink)
 - OBSTACK_GRAFANA_ADMIN_PASSWORD
 - OBSTACK_WG_PRIVATE_KEY_<INVENTORY_HOST> for each WireGuard host
 - OBSTACK_ALLOY_METRICS_PASSWORD_<INVENTORY_HOST> for each monitored host
@@ -18,6 +19,7 @@ Set the Ansible Vault password-file location through the standard ANSIBLE_VAULT_
 
 Example controller setup (populate values from your approved secret manager; do not commit this file):
 
+    export OBSTACK_ALERTMANAGER_WEBHOOK_URL='https://your-approved-alert-webhook.example/path'
     export OBSTACK_GRAFANA_ADMIN_USER='admin'
     export OBSTACK_GRAFANA_ADMIN_PASSWORD='...'
     export OBSTACK_WG_PRIVATE_KEY_OBSTACK_CENTRAL='...'
@@ -32,7 +34,7 @@ Do not enable shell tracing while secrets are present. CI runs syntax/lint and c
 
 ## Central host: first-time provisioning
 
-The central host playbook provisions Ubuntu 24.04 ARM64, installs baseline security packages and Docker, creates the private ObStack CA and central server certificate, deploys the Compose stack and checks service readiness.
+The central host playbook provisions Ubuntu 24.04 ARM64, installs baseline security packages and Docker, creates the private ObStack CA and central server certificate, deploys the Compose stack and checks service readiness. When OBSTACK_ALERTMANAGER_WEBHOOK_URL is supplied, Ansible renders a protected Alertmanager config to enable webhook delivery of firing and resolved alerts; otherwise the default receiver is a sink and no notifications are delivered. The URL must be HTTPS and is stored in the generated config with root ownership and 0640 permissions for the dedicated container group.
 
 Before running:
 - Verify SSH access and keep the current SSH session open during first provisioning.
