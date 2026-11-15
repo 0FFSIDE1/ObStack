@@ -85,7 +85,7 @@ jobs:
       ANSIBLE_HOST_KEY_CHECKING: "True"
       OBSTACK_GRAFANA_ADMIN_USER: ${{ secrets.OBSTACK_GRAFANA_ADMIN_USER }}
       OBSTACK_GRAFANA_ADMIN_PASSWORD: ${{ secrets.OBSTACK_GRAFANA_ADMIN_PASSWORD }}
-      OBSTACK_ANSIBLE_VAULT_PASSWORD_FILE: ${{ runner.temp }}/obstack-vault-password
+      OBSTACK_ANSIBLE_VAULT_PASSWORD_FILE: ${{ github.workspace }}/.obstack-vault-password
     steps:
       - name: Check out verified tagged release
         uses: actions/checkout@v4
