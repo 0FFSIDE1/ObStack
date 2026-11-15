@@ -34,7 +34,7 @@ class ReleaseChangelogTests(unittest.TestCase):
             release_notes(VALID, "1.2.3")
 
     def test_rejects_placeholder_only_entry(self):
-        changelog = VALID.replace("- Add CIDR preflight reporting.", "- TBD")
+        changelog = VALID.replace("- Add CIDR preflight reporting.\n\n### Fixed\n- Fix config parsing.", "- TBD")
         with self.assertRaisesRegex(ValueError, "meaningful bullet"):
             release_notes(changelog, "v1.2.3")
 
