@@ -73,3 +73,12 @@ ansible-playbook -i ansible/inventory/hosts.yml \
 The controller writes temporary normalized inputs and per-host discovery records beneath `ansible/tmp/network-discovery` with restrictive permissions. Treat these as internal network information and remove them after review. AWS calls and remote host collection are read-only; the playbook does not change routes, Docker, security groups, or WireGuard. A successful checker result does not grant approval: the network owner must confirm a candidate and only then may it be set in inventory for a separate, explicitly approved WireGuard deployment.
 
 The discovery covers route tables and Docker IPAM subnets on the selected inventory hosts. It does not magically discover unadvertised home/office ranges, disconnected VPCs, or VPN routing outside the supplied AWS region/account; provide those explicitly.
+
+
+## Host interface CIDR and route validation gate
+
+The automated playbook now collects both `ip -o -4 addr show` (interface-assigned host CIDRs) and `ip -4 route show table all` (connected and routed destination CIDRs) from every host in `wireguard`. It also inspects Docker IPAM networks when Docker is installed. If Docker is installed but inspection fails, discovery fails closed. A host where Docker is absent is recorded explicitly.
+
+The playbook requires exactly 10 hosts in the `monitored` inventory group and at least 11 hosts in `wireguard` (central host plus ten remote hosts). The normalizer independently requires 11 host records. Candidate CIDRs are checked against host interface CIDRs, host route destinations, Docker subnets, AWS VPC/subnet ranges, and operator-supplied VPN ranges. A nonzero result fails the Ansible play.
+
+A clean result opens the **WireGuard approval stage**: review the generated report and obtain explicit network-owner approval. It does not change inventory, configure WireGuard, create keys, or deploy networking.
