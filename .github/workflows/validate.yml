@@ -2,7 +2,7 @@ name: Validate configuration
 on:
   workflow_call:
   push:
-    branches: [main, "feat/**"]
+    branches: [main, release, "feat/**"]
   pull_request:
   workflow_dispatch:
 
