@@ -117,7 +117,7 @@
           }}
       changed_when: true
 
-    - name: Check overlaps (non-zero means conflicts or no safe candidate)
+    - name: Check overlaps (read-only; rc 2 means conflicts or no safe candidate)
       ansible.builtin.command:
         argv:
           - python3
@@ -125,8 +125,20 @@
           - "{{ obstack_cidr_output }}"
       changed_when: false
       register: obstack_cidr_report
-      failed_when: obstack_cidr_report.rc not in [0, 2]
+      failed_when: false
 
-    - name: Print overlap report
+    - name: Print overlap report before applying the validation gate
       ansible.builtin.debug:
         msg: "{{ obstack_cidr_report.stdout_lines }}"
+
+    - name: Require a conflict-free discovery result and at least one clean candidate
+      ansible.builtin.assert:
+        that:
+          - obstack_cidr_report.rc == 0
+        fail_msg: >-
+          CIDR preflight FAILED (checker exit {{ obstack_cidr_report.rc }}).
+          Review the report above. Do not approve or deploy a WireGuard overlay
+          until all discovered overlaps are resolved and a candidate passes.
+        success_msg: >-
+          CIDR preflight passed for the supplied discovery inputs. This is not
+          operator approval; review the report before selecting an overlay.
