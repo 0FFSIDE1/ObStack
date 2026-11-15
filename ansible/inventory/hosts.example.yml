@@ -18,6 +18,7 @@ all:
           obstack_wg_address: REPLACE_WITH_UNIQUE_APPROVED_SPOKE_ADDRESS_CIDR
           obstack_wg_vpn_ip: REPLACE_WITH_UNIQUE_APPROVED_SPOKE_VPN_IP
           obstack_wg_public_key: REPLACE_WITH_REMOTE_PUBLIC_KEY
+          obstack_wg_peer_public_ip: REPLACE_WITH_VERIFIED_STATIC_EGRESS_IPV4
           project: REPLACE_WITH_PROJECT
           environment: production
     wireguard:
