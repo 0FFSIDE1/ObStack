@@ -5,12 +5,12 @@ The repository default branch (`main`) currently contains only `README.md`, `.gi
 ### Central host facts supplied by the user
 
 - Candidate OS: Ubuntu 22, 24, or 26 (exact release not yet selected).
-- Initial resources are fixed for now: 2 vCPU, 2 GB RAM, 8–14 GB disk. User says the host could be increased later.
+- Initial resources are fixed for now: 2 vCPU, 2 GB RAM, 14 GB disk on AWS EC2. User says the host could be increased later. The EBS volume type and whether the 14 GB refers to root volume capacity still need confirmation.
 - Docker Engine: not installed.
 - Requested retention: metrics 30 days; logs 20 days.
 - These are user-provided intended specifications, not independently verified host facts.
 
-**Capacity assessment:** the initial host is severely constrained for a centralized observability platform. The 8–14 GB disk must also accommodate OS, Docker image layers, persistent service state, indexes/compaction, and operational headroom; it is unlikely to support meaningful telemetry volume with the requested retention safely. 2 GB RAM limits the number of services and ingest/query headroom. Therefore, treat the initial deployment as a tightly scoped pilot / low-volume MVP, not production-capacity assurance. Retention goals must be validated against measured ingest rates and disk usage; configure hard storage limits, capacity alerts, and a documented degradation/scale-up procedure. Do not silently shorten retention: if the capacity budget is exceeded, alert and require an explicit policy decision or host expansion.
+**Capacity assessment:** the initial host is severely constrained for a centralized observability platform. The 14 GB EC2 disk must also accommodate OS, Docker image layers, persistent service state, indexes/compaction, and operational headroom; it is unlikely to support meaningful telemetry volume with the requested retention safely. 2 GB RAM limits the number of services and ingest/query headroom. Therefore, treat the initial deployment as a tightly scoped pilot / low-volume MVP, not production-capacity assurance. Retention goals must be validated against measured ingest rates and disk usage; configure hard storage limits, capacity alerts, and a documented degradation/scale-up procedure. Do not silently shorten retention: if the capacity budget is exceeded, alert and require an explicit policy decision or host expansion.
 
 **Scale-up path (engineering guidance, not vendor minimum):** first consider increasing disk to a dedicated SSD sized from measured daily metrics/log ingestion and retention plus OS, indexes, compaction, backup, and safety headroom; then increase RAM/CPU based on service utilization and query/ingest load. A planning baseline of 4 vCPU, 8 GB RAM, and 100 GB SSD may suit a modest initial fleet, but is not a guarantee and should be recalculated from observed telemetry. Prefer Ubuntu 24.04 LTS for initial stable deployment; verify support lifecycle and package availability during implementation.
 
@@ -58,7 +58,7 @@ Required low-cardinality identity labels: `project`, `environment`, `server`, `i
 
 ## 6. Retention and resilience direction
 
-User-requested retention targets: **Prometheus metrics 30 days; Loki logs 20 days**. These targets are not yet capacity-validated against the fixed initial 2 vCPU / 2 GB RAM / 8–14 GB disk host. Implementation must configure retention explicitly, enforce storage caps, and alert on disk usage, ingestion, and service resource pressure. Estimate capacity from observed metrics TSDB growth and log GB/day; include indexes, compaction, image/OS footprint, backup requirements, and safe free-space headroom. Record measured retention behavior in staging/pilot and raise a scale-up recommendation before disk pressure jeopardizes data or service availability. Do not claim the requested retention is guaranteed until measured.
+User-requested retention targets: **Prometheus metrics 30 days; Loki logs 20 days**. These targets are not yet capacity-validated against the fixed initial AWS EC2 2 vCPU / 2 GB RAM / 14 GB disk host. Implementation must configure retention explicitly, enforce storage caps, and alert on disk usage, ingestion, and service resource pressure. Estimate capacity from observed metrics TSDB growth and log GB/day; include indexes, compaction, image/OS footprint, backup requirements, and safe free-space headroom. Record measured retention behavior in staging/pilot and raise a scale-up recommendation before disk pressure jeopardizes data or service availability. Do not claim the requested retention is guaranteed until measured.
 
 Initial single central node with local persistent storage and encrypted off-host backups is **not high availability**. Backup destination, backup retention, RPO/RTO, and restoration test remain undecided. Future path: object storage, scalable Loki, Prometheus-compatible long-term storage such as Mimir, redundant infrastructure and independent uptime monitoring.
 
@@ -68,7 +68,7 @@ Use Ansible for repeatable idempotent provisioning. Do not modify production hos
 
 ## 8. Decisions required
 
-1. Confirm exact Ubuntu release and available disk size (8 vs 14 GB); host expansion is possible but not currently approved/specified.
+1. Confirm exact Ubuntu release and EC2 storage details (EBS volume type; root-volume capacity); host expansion is possible but not currently approved/specified.
 2. Remote Linux distributions and first project/server/service inventory.
 3. VPN/network topology, allowed peers, firewall owner and telemetry endpoint reachability.
 4. DNS and TLS issuer/renewal.
