@@ -39,8 +39,6 @@
     that:
       - hostvars[item].obstack_alloy_metrics_password | default('') | length >= 24
       - hostvars[item].obstack_alloy_logs_password | default('') | length >= 24
-      - (hostvars[item].obstack_alloy_metrics_username | default('obstack-' ~ item ~ '-metrics')) | length > 0
-      - (hostvars[item].obstack_alloy_logs_username | default('obstack-' ~ item ~ '-logs')) | length > 0
     fail_msg: "Each enrolled monitored host needs unique usernames and 24+ character metrics/logs passwords stored in Ansible Vault."
   loop: "{{ groups['monitored'] | default([]) }}"
   no_log: true
@@ -48,7 +46,7 @@
 - name: Add per-host metrics credentials to Nginx htpasswd
   community.general.htpasswd:
     path: /etc/obstack/secrets/metrics.htpasswd
-    name: "{{ hostvars[item].obstack_alloy_metrics_username | default('obstack-' ~ item ~ '-metrics') }}"
+    name: "obstack-{{ item }}-metrics"
     password: "{{ hostvars[item].obstack_alloy_metrics_password }}"
     crypt_scheme: bcrypt
     state: present
@@ -61,7 +59,7 @@
 - name: Add per-host logs credentials to Nginx htpasswd
   community.general.htpasswd:
     path: /etc/obstack/secrets/logs.htpasswd
-    name: "{{ hostvars[item].obstack_alloy_logs_username | default('obstack-' ~ item ~ '-logs') }}"
+    name: "obstack-{{ item }}-logs"
     password: "{{ hostvars[item].obstack_alloy_logs_password }}"
     crypt_scheme: bcrypt
     state: present
