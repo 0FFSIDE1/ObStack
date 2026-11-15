@@ -1,27 +1,42 @@
 ---
 # Read-only: never installs, stops, restarts, or reconfigures containers.
+# Targets every host currently in the monitored inventory group, regardless of fleet size.
 - name: Discover existing Alloy and Docker runtime
   hosts: monitored
   become: true
   gather_facts: true
   tasks:
-    - name: Check Docker executable
-      ansible.builtin.stat:
-        path: /usr/bin/docker
+    - name: Locate Docker CLI
+      ansible.builtin.command: command -v docker
       register: docker_cli
+      changed_when: false
+      failed_when: false
+
+    - name: Record Docker availability
+      ansible.builtin.set_fact:
+        obstack_docker_available: "{{ docker_cli.rc == 0 }}"
+
     - name: List all containers without environment values
       ansible.builtin.command:
-        argv: [docker, ps, --all, --no-trunc, --format, "{{'{{'}}.ID{{'}}'}}|{{'{{'}}.Names{{'}}'}}|{{'{{'}}.Image{{'}}'}}|{{'{{'}}.Status{{'}}'}}"]
+        argv:
+          - "{{ docker_cli.stdout | trim }}"
+          - ps
+          - --all
+          - --no-trunc
+          - --format
+          - "{{'{{'}}.ID{{'}}'}}|{{'{{'}}.Names{{'}}'}}|{{'{{'}}.Image{{'}}'}}|{{'{{'}}.Status{{'}}'}}"
       register: docker_ps
       changed_when: false
-      when: docker_cli.stat.exists
-    - name: Identify Alloy candidates
+      when: obstack_docker_available
+
+    - name: Identify Alloy candidates by image or container name
       ansible.builtin.set_fact:
         obstack_alloy_ids: "{{ (docker_ps.stdout_lines | default([])) | select('search', '(?i)(grafana/alloy|alloy)') | map('split', '|') | map('first') | list }}"
+
     - name: Inspect safe Alloy metadata only
       ansible.builtin.command:
         argv:
-          - docker
+          - "{{ docker_cli.stdout | trim }}"
           - inspect
           - --format
           - >-
@@ -30,8 +45,18 @@
       loop: "{{ obstack_alloy_ids | default([]) }}"
       register: alloy_inspect
       changed_when: false
-      when: docker_cli.stat.exists
-    - name: Report discovered Alloy metadata
+      when: obstack_docker_available
+
+    - name: Report host-level discovery summary
       ansible.builtin.debug:
-        var: alloy_inspect.results
-      when: docker_cli.stat.exists
+        msg:
+          host: "{{ inventory_hostname }}"
+          architecture: "{{ ansible_architecture }}"
+          docker_available: "{{ obstack_docker_available }}"
+          alloy_candidate_count: "{{ obstack_alloy_ids | default([]) | length }}"
+          alloy_containers: "{{ alloy_inspect.results | default([]) | map(attribute='stdout') | list }}"
+
+    - name: Report that Docker is absent
+      ansible.builtin.debug:
+        msg: "Docker CLI not found; no container discovery performed. No changes made."
+      when: not obstack_docker_available
