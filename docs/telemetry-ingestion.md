@@ -9,9 +9,9 @@ Remote Alloy agents send telemetry through the private WireGuard overlay to the 
 | Prometheus remote-write | /api/v1/write | prometheus:9090/api/v1/write | Per-host metrics username/password |
 | Loki push | /loki/api/v1/push | loki:3100/loki/api/v1/push | Per-host logs username/password; tenant obstack |
 
-Prometheus remote-write receiver is enabled explicitly with --web.enable-remote-write-receiver. Loki retains auth_enabled=true; Nginx sets X-Scope-OrgID to the single-node tenant obstack after authenticating the caller. Prometheus and Loki are not published on public host interfaces. Their host ports remain bound to 127.0.0.1.
+Prometheus remote-write receiver is enabled explicitly with --web.enable-remote-write-receiver. Loki retains auth_enabled=true; Nginx sets X-Scope-OrgID to the single-node tenant obstack after authenticating the caller. Prometheus and Loki are not published on public host interfaces. Their host ports remain bound to 127.0.0.1. Nginx runs as an unprivileged UID with a dedicated host-created group; only that group can read the central TLS key and bcrypt htpasswd files. The Grafana .env file remains root-only.
 
-Nginx publishes HTTPS on loopback during bootstrap. Once WireGuard is provisioned and verified, set the central Nginx bind address to the hub's WireGuard IPv4 address and rerun central provisioning. AWS security-group TCP 443 remains closed to the public internet. Only UDP 51820 is needed for the WireGuard hub and must be source-restricted to verified static remote egress IPv4 /32 addresses.
+Nginx publishes HTTPS on loopback during bootstrap. Once WireGuard is provisioned and verified, set the central Nginx bind address to the hub's WireGuard IPv4 address and rerun central provisioning. AWS security-group TCP 443 remains closed to the public internet. Only UDP 51820 is needed for the WireGuard hub. Both AWS Security Group ingress and central UFW ingress are restricted to each enrolled host's separately verified static public egress IPv4 /32, recorded as obstack_wg_peer_public_ip; do not assume the SSH management address is necessarily the observed tunnel source.
 
 ## Credential model
 
