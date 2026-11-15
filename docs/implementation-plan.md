@@ -35,13 +35,13 @@
 
 ## Phase 3 — Central platform
 
-- [x] Compose stack: Prometheus, Grafana, Loki, Alertmanager and Blackbox Exporter; constrain scope/resources for the initial small ARM64 host. Nginx/TLS ingress remains pending.
+- [x] Compose stack: Nginx reverse proxy, Prometheus, Grafana, Loki, Alertmanager and Blackbox Exporter; constrain scope/resources for the initial small ARM64 host.
 - [ ] Persistent volumes, dedicated networks, health checks, resource controls and hardening.
 - [ ] Prometheus scrape/remote-write receiver config and rule groups; configure 30-day metrics retention and validate TSDB growth.
 - [ ] Loki auth, retention/compaction and storage limits; configure 20-day log retention and measure actual daily ingest/index footprint.
 - [ ] Establish host/disk/service capacity alerting, safe free-space headroom, and explicit scale-up/degradation runbook. Requested retention is a target, not guaranteed until telemetry volume is measured.
 - [ ] Grafana datasources, global/project dashboard provisioning and RBAC.
-- [ ] Nginx TLS/auth/access restrictions and certificate lifecycle.
+- [x] Dockerized Nginx TLS reverse proxy for Grafana, loopback-bound during bootstrap; WireGuard-only listener binding and certificate lifecycle hardening remain.
 - [ ] Configuration validation using official tooling; confirm every central image has a linux/arm64 manifest.
 
 ## Phase 4 — Remote agent and exporter patterns
@@ -58,7 +58,8 @@
 - [x] Central inventory variable example, controller collection requirements and first-pass common/security/Docker/certificate/central-stack roles.
 - [ ] Complete Nginx ingress, backup, validation roles, and wireguard_hub/wireguard_peers roles.
 - [ ] Inventory architecture facts and normalized architecture variables; fail safely on unsupported architectures rather than downloading the wrong binary. Enforce ARM64-compatible artifacts for central deployment.
-- [x] First-pass central deployment playbook for baseline host hardening, Docker installation, private CA/server certificate generation, Compose deployment/startup and readiness checks (not yet syntax-checked or run).
+- [x] First-pass central deployment playbook for baseline host hardening, Africa/Lagos timezone, Docker installation, private CA/server certificate generation, Docker Nginx TLS reverse proxy, Compose deployment/startup and service readiness checks (not yet syntax-checked or run).
+- [x] GitHub Actions workflow for Ansible syntax checks, Ansible Lint and Compose configuration validation.
 - [ ] WireGuard hub provisioning, remote peer onboarding/update/removal, exporter enablement, validation and agent removal playbooks.
 - [ ] Enforce least-privilege peer AllowedIPs; one unique /32 per remote; no full-tunnel or remote-to-remote routing by default.
 - [ ] Ensure private keys are generated/stored securely and never committed; support peer revocation and rotation.
