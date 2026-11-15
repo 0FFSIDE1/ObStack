@@ -6,9 +6,10 @@
       - groups[obstack_wg_spoke_group] | length > 0
     fail_msg: "Inventory must define exactly one observability hub and at least one monitored spoke."
 
-- name: Require a unique and complete spoke address map on the hub
+- name: Collect spoke overlay addresses and public keys on the hub
   ansible.builtin.set_fact:
     obstack_wg_peer_ips: "{{ groups[obstack_wg_spoke_group] | map('extract', hostvars, 'obstack_wg_vpn_ip') | list }}"
+    obstack_wg_peer_keys: "{{ groups[obstack_wg_spoke_group] | map('extract', hostvars, 'obstack_wg_public_key') | list }}"
   when: inventory_hostname in groups[obstack_wg_hub_group]
 
 - name: Reject duplicate spoke overlay addresses on the hub
@@ -16,7 +17,9 @@
     that:
       - obstack_wg_peer_ips | length == obstack_wg_peer_ips | unique | list | length
       - obstack_wg_peer_ips | length == groups[obstack_wg_spoke_group] | length
-    fail_msg: "Every enrolled spoke must have a unique, defined WireGuard IPv4 address."
+      - obstack_wg_peer_keys | length == obstack_wg_peer_keys | unique | list | length
+      - obstack_wg_public_key not in obstack_wg_peer_keys
+    fail_msg: "Every enrolled spoke must have a unique overlay IPv4 address and public key distinct from every other peer and the hub."
   when: inventory_hostname in groups[obstack_wg_hub_group]
 
 - name: Validate the local WireGuard identity and address
@@ -71,6 +74,21 @@
     owner: root
     group: root
     mode: "0700"
+
+- name: Derive the local public key from its private key without logging key material
+  ansible.builtin.command: wg pubkey
+  args:
+    stdin: "{{ obstack_wg_private_key }}"
+  register: obstack_derived_public_key
+  changed_when: false
+  no_log: true
+
+- name: Require the configured public key to match the private key
+  ansible.builtin.assert:
+    that:
+      - obstack_derived_public_key.stdout == obstack_wg_public_key
+    fail_msg: "The configured WireGuard public key does not match this host's private key."
+  no_log: true
 
 - name: Render private interface config
   ansible.builtin.template:
