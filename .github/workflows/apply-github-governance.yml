@@ -82,7 +82,7 @@ jobs:
           endpoint="repos/0FFSIDE1/ObStack/rulesets"
           for file in .github/rulesets/*.json; do
             name="$(jq -r '.name' "$file")"
-            id="$(gh api "$endpoint" --jq --arg name "$name" '.[] | select(.name == $name) | .id' | head -n 1 || true)"
+            id="$(gh api "$endpoint" | jq -r --arg name "$name" '.[] | select(.name == $name) | .id' | head -n 1 || true)"
             if [[ -n "$id" ]]; then
               echo "Updating ruleset: $name (id $id)"
               gh api --method PUT "$endpoint/$id" --input "$file" >/dev/null
