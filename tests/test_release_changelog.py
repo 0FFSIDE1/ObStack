@@ -46,6 +46,16 @@ class ReleaseChangelogTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "meaningful bullet"):
             pending_notes(placeholder, "v1.2.3")
 
+    def test_rejects_unsupported_category(self):
+        invalid = PENDING.replace("### Added", "### Miscellaneous")
+        with self.assertRaisesRegex(ValueError, "Unsupported changelog category"):
+            pending_notes(invalid, "v1.2.3")
+
+    def test_rejects_bullets_outside_categories(self):
+        invalid = PENDING.replace("### Added\\n- Add CIDR preflight reporting.", "- Add CIDR preflight reporting.")
+        with self.assertRaisesRegex(ValueError, "supported category"):
+            pending_notes(invalid, "v1.2.3")
+
     def test_promotes_notes_before_unreleased(self):
         _, notes = pending_notes(PENDING, "v1.2.3")
         promoted = promote_changelog(CHANGELOG, "v1.2.3", notes)

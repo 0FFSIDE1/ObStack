@@ -12,6 +12,7 @@ from pathlib import Path
 VERSION_RE = re.compile(r"^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 DATE_RE = re.compile(r"^Release date: (\d{4}-\d{2}-\d{2})$")
 PLACEHOLDERS = {"tbd", "todo", "placeholder", "no changes", "n/a"}
+CATEGORIES = {"Added", "Changed", "Deprecated", "Removed", "Fixed", "Security"}
 
 
 def pending_notes(metadata: str, version: str) -> tuple[str, str]:
