@@ -1,0 +1,8 @@
+---
+# The project uses the obstack_ namespace for shared role variables.
+# Docker's Go-template format strings are long by nature and are tested by
+# the playbook syntax check; keep other basic Ansible lint rules enabled.
+profile: basic
+skip_list:
+  - var-naming[no-role-prefix]
+  - yaml[line-length]
