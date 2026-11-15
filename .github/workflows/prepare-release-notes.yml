@@ -42,6 +42,18 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Ensure release classification labels exist
+        env:
+          GH_TOKEN: ${{ secrets.OBSTACK_RELEASE_AUTOMATION_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh label create release:none --repo "$GITHUB_REPOSITORY" --color "ededed" --description "Exclude this PR from release notes" --force
+          gh label create release:added --repo "$GITHUB_REPOSITORY" --color "0e8a16" --description "User-facing addition" --force
+          gh label create release:changed --repo "$GITHUB_REPOSITORY" --color "1d76db" --description "User-facing change" --force
+          gh label create release:deprecated --repo "$GITHUB_REPOSITORY" --color "fbca04" --description "Deprecation" --force
+          gh label create release:removed --repo "$GITHUB_REPOSITORY" --color "d93f0b" --description "Removal" --force
+          gh label create release:fixed --repo "$GITHUB_REPOSITORY" --color "5319e7" --description "Bug fix" --force
+          gh label create release:security --repo "$GITHUB_REPOSITORY" --color "b60205" --description "Security change" --force
       - name: Generate release metadata from merged pull requests
         env:
           GH_TOKEN: ${{ secrets.OBSTACK_RELEASE_AUTOMATION_TOKEN }}
