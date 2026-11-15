@@ -4,12 +4,13 @@
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import re
 import sys
 from pathlib import Path
 
-VERSION_RE = re.compile(r"^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
-ENTRY_RE = re.compile(r"^## \[(v\d+\.\d+\.\d+)\] - (\d{4}-\d{2}-\d{2})\s*$")
+VERSION_RE = re.compile(r"^v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$")
+ENTRY_RE = re.compile(r"^## \\[(v\\d+\\.\\d+\\.\\d+)\\] - (\\d{4}-\\d{2}-\\d{2})\\s*$")
 PLACEHOLDERS = {"tbd", "todo", "placeholder", "no changes", "n/a"}
 
 
@@ -18,15 +19,22 @@ def release_notes(changelog: str, version: str) -> str:
         raise ValueError(f"Invalid release version {version!r}; expected vMAJOR.MINOR.PATCH.")
 
     lines = changelog.splitlines()
-    start = None
-    for index, line in enumerate(lines):
-        match = ENTRY_RE.fullmatch(line)
-        if match and match.group(1) == version:
-            start = index
-            break
-
-    if start is None:
+    matches = [
+        index
+        for index, line in enumerate(lines)
+        if (match := ENTRY_RE.fullmatch(line)) and match.group(1) == version
+    ]
+    if not matches:
         raise ValueError(f"Missing dated changelog entry for {version}.")
+    if len(matches) > 1:
+        raise ValueError(f"Duplicate changelog entries found for {version}.")
+
+    start = matches[0]
+    date_match = ENTRY_RE.fullmatch(lines[start])
+    try:
+        dt.date.fromisoformat(date_match.group(2))
+    except ValueError as error:
+        raise ValueError(f"Invalid release date in changelog entry for {version}.") from error
 
     end = len(lines)
     for index in range(start + 1, len(lines)):
@@ -35,17 +43,22 @@ def release_notes(changelog: str, version: str) -> str:
             break
 
     section = lines[start:end]
-    body = section[1:]
     bullets = [
         line.strip()[2:].strip()
-        for line in body
-        if re.match(r"^\s*-\s+", line)
+        for line in section[1:]
+        if re.match(r"^\\s*-\\s+", line)
     ]
-    meaningful = [\n        item for item in bullets\n        if item.lower() not in PLACEHOLDERS\n        and "add changelog entries here" not in item.lower()\n        and item != "..."\n    ]
+    meaningful = [
+        item
+        for item in bullets
+        if item.lower() not in PLACEHOLDERS
+        and "add changelog entries here" not in item.lower()
+        and item != "..."
+    ]
     if not meaningful:
         raise ValueError(f"Changelog entry for {version} must contain at least one meaningful bullet.")
 
-    return "\n".join(section).strip() + "\n"
+    return "\\n".join(section).strip() + "\\n"
 
 
 def main() -> int:
