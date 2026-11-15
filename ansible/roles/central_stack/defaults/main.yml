@@ -1,0 +1,4 @@
+---
+obstack_install_dir: /opt/obstack
+obstack_compose_project: obstack
+obstack_grafana_admin_user: admin
