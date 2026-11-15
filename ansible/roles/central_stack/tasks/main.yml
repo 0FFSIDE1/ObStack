@@ -1,4 +1,76 @@
 ---
+- name: Install passlib for bcrypt htpasswd management
+  ansible.builtin.apt:
+    name: python3-passlib
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Create protected telemetry authentication directory
+  ansible.builtin.file:
+    path: /etc/obstack/secrets
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Create metrics htpasswd file
+  ansible.builtin.file:
+    path: /etc/obstack/secrets/metrics.htpasswd
+    state: touch
+    owner: root
+    group: root
+    mode: "0600"
+    modification_time: preserve
+    access_time: preserve
+
+- name: Create logs htpasswd file
+  ansible.builtin.file:
+    path: /etc/obstack/secrets/logs.htpasswd
+    state: touch
+    owner: root
+    group: root
+    mode: "0600"
+    modification_time: preserve
+    access_time: preserve
+
+- name: Require unique per-host metrics and logs credentials
+  ansible.builtin.assert:
+    that:
+      - hostvars[item].obstack_alloy_metrics_password | default('') | length >= 24
+      - hostvars[item].obstack_alloy_logs_password | default('') | length >= 24
+      - (hostvars[item].obstack_alloy_metrics_username | default('obstack-' ~ item ~ '-metrics')) | length > 0
+      - (hostvars[item].obstack_alloy_logs_username | default('obstack-' ~ item ~ '-logs')) | length > 0
+    fail_msg: "Each enrolled monitored host needs unique usernames and 24+ character metrics/logs passwords stored in Ansible Vault."
+  loop: "{{ groups['monitored'] | default([]) }}"
+  no_log: true
+
+- name: Add per-host metrics credentials to Nginx htpasswd
+  community.general.htpasswd:
+    path: /etc/obstack/secrets/metrics.htpasswd
+    name: "{{ hostvars[item].obstack_alloy_metrics_username | default('obstack-' ~ item ~ '-metrics') }}"
+    password: "{{ hostvars[item].obstack_alloy_metrics_password }}"
+    crypt_scheme: bcrypt
+    state: present
+    owner: root
+    group: root
+    mode: "0600"
+  loop: "{{ groups['monitored'] | default([]) }}"
+  no_log: true
+
+- name: Add per-host logs credentials to Nginx htpasswd
+  community.general.htpasswd:
+    path: /etc/obstack/secrets/logs.htpasswd
+    name: "{{ hostvars[item].obstack_alloy_logs_username | default('obstack-' ~ item ~ '-logs') }}"
+    password: "{{ hostvars[item].obstack_alloy_logs_password }}"
+    crypt_scheme: bcrypt
+    state: present
+    owner: root
+    group: root
+    mode: "0600"
+  loop: "{{ groups['monitored'] | default([]) }}"
+  no_log: true
+
 - name: Create deployment subdirectories
   ansible.builtin.file:
     path: "{{ obstack_install_dir }}/{{ item }}"
