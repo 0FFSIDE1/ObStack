@@ -93,7 +93,7 @@ services:
     command: ["--config.file=/etc/alertmanager/alertmanager.yml", "--storage.path=/alertmanager"]
     ports: ["127.0.0.1:9093:9093"]
     volumes:
-      - /etc/obstack/secrets/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
       - alertmanager_data:/alertmanager
     group_add: ["${NGINX_AUTH_GID:-20000}"]
     networks: [backend]
