@@ -3,6 +3,15 @@
 - name: Collect local network facts from ObStack fleet
   hosts: wireguard
   gather_facts: false
+  pre_tasks:
+    - name: Create controller discovery directory before remote records are written
+      ansible.builtin.file:
+        path: "{{ obstack_cidr_discovery_dir }}"
+        state: directory
+        mode: "0700"
+      delegate_to: localhost
+      become: false
+      run_once: true
   tasks:
     - name: Collect IPv4 routes
       ansible.builtin.command: ip -4 route show table all
