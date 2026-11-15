@@ -88,7 +88,6 @@
     group: root
     mode: "0600"
     content: |
-      -D
       -b 8192
       -f 1
       -a always,exit -F arch=b64 -S execve -S execveat -k obstack-command-exec
@@ -97,7 +96,6 @@
       -w /etc/ssh/sshd_config -p wa -k obstack-ssh-config
       -w /etc/ssh/sshd_config.d/ -p wa -k obstack-ssh-config
       -w /etc/audit/ -p wa -k obstack-audit-config
-  notify: Load ObStack audit rules
 
 - name: Create protected sudo command log directory
   ansible.builtin.file:
