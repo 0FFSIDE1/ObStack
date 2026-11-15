@@ -14,6 +14,7 @@
     - grafana/provisioning
     - alertmanager
     - blackbox
+    - nginx
 
 - name: Copy central Compose manifest from the checked-out repository
   ansible.builtin.copy:
@@ -47,6 +48,7 @@
     content: |
       GRAFANA_ADMIN_USER={{ obstack_grafana_admin_user }}
       GRAFANA_ADMIN_PASSWORD={{ obstack_grafana_admin_password }}
+      NGINX_BIND_ADDRESS={{ obstack_nginx_bind_address | default('127.0.0.1') }}
   no_log: true
 
 - name: Validate rendered Compose configuration
@@ -68,6 +70,16 @@
     chdir: "{{ obstack_install_dir }}"
   register: obstack_up
   changed_when: "'Started' in obstack_up.stdout or 'Created' in obstack_up.stdout or 'Recreated' in obstack_up.stdout"
+
+- name: Wait for Nginx TLS reverse proxy readiness
+  ansible.builtin.uri:
+    url: https://127.0.0.1:8443/api/health
+    validate_certs: false
+    status_code: 200
+  register: nginx_ready
+  retries: 12
+  delay: 5
+  until: nginx_ready.status == 200
 
 - name: Wait for Prometheus readiness
   ansible.builtin.uri:
