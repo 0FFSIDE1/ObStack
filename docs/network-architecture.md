@@ -3,7 +3,8 @@
 **Status:** Selected design documented; implementation pending.  
 **Decision owner:** User  
 **Workload classification:** Non-commercial (user-confirmed)  
-**Scope:** One central AWS EC2 observability host and ten Ubuntu 24.04 LTS remote servers (5 AMD64, 5 ARM64).
+**Scope:** One central AWS EC2 observability host and ten Ubuntu 24.04 LTS remote servers (5 AMD64, 5 ARM64).  
+**Central endpoint:** AWS Elastic IP is user-confirmed; the literal address has not been supplied or recorded.
 
 ## 1. Decision
 
@@ -13,7 +14,7 @@ The initial design does not use Tailscale, Headscale, a commercial VPN service, 
 
 ## 2. Topology
 
-- **Hub:** central AWS EC2, Ubuntu 24.04 LTS, user-reported ARM64/Graviton, proposed VPN address 10.77.0.1.
+- **Hub:** central AWS EC2, Ubuntu 24.04 LTS, user-reported ARM64/Graviton, with a user-confirmed Elastic IP (actual address to verify during deployment), proposed VPN address 10.77.0.1.
 - **Spokes:** ten remote Ubuntu 24.04 LTS hosts. Five AMD64 and five ARM64. Proposed addresses 10.77.0.11 through 10.77.0.20.
 - **Transport:** each remote host initiates an outbound WireGuard UDP tunnel to the hub's stable public endpoint on UDP 51820.
 - **Telemetry:** Alloy forwards metrics and logs to central endpoints over the VPN. Prometheus, Loki, Grafana and exporters are not directly exposed to the public internet.
@@ -61,7 +62,7 @@ Peer restrictions:
 
 ## 4. AWS and host firewall policy
 
-1. Confirm the hub's actual public endpoint and arrange a stable address (prefer an Elastic IP if appropriate).
+1. Retrieve and verify the existing Elastic IP allocation and association with the central EC2 instance; record it in deployment inventory/configuration (not as a guessed value). No additional Elastic IP allocation is currently required.
 2. Permit inbound UDP 51820 in the hub's AWS Security Group. Since remote source IPs may be dynamic, initial ingress may require a broad source range; narrow it to known static egress addresses whenever feasible and review this exposure.
 3. Do not add public inbound rules for Prometheus 9090, Loki 3100, Grafana 3000, Node Exporter 9100, cAdvisor or other exporter ports.
 4. On the hub, permit only required telemetry and management flows on the WireGuard interface. Remote peers should not gain general host or container-network access.
@@ -109,7 +110,7 @@ WireGuard encrypts the network path but does not replace service authentication,
 
 ## 9. Preconditions / open decisions
 
-- Actual central EC2 instance type, kernel architecture, public IP and Elastic IP status.
+- Actual central EC2 instance type, kernel architecture, and exact Elastic IP value/association (Elastic IP existence is user-confirmed).
 - AWS VPC CIDR and remote network CIDRs; confirmation the proposed VPN range is non-overlapping.
 - Per-host names, architecture, project/environment mapping, static/dynamic public egress and ownership.
 - UDP egress policy and AWS Security Group/firewall change authority.
