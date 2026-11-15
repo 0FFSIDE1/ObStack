@@ -48,6 +48,28 @@ Exit codes: `0` means no overlap among supplied records and at least one candida
 
 ## Scope and safe gate
 
-This is the first automated validation component, not yet an end-to-end Ansible discovery pipeline. AWS routes, host routes, Docker networks and home/office VPN CIDRs must still be gathered and normalized into the input file. The next automation stage can use AWS read-only API calls and Ansible read-only host tasks to create this input automatically. A clean candidate remains a recommendation: the operator/network owner must review and approve it before setting the inventory's `obstack_wg_address` and `obstack_wg_vpn_ip` values or running the mutating `wireguard.yml` playbook.
+An Ansible-driven read-only discovery playbook is now available at `ansible/playbooks/cidr-overlap-discovery.yml`. It queries AWS VPCs and subnets using the AWS CLI, collects IPv4 route tables and Docker network inspect output from inventory hosts in the `wireguard` group, and normalizes records before invoking the checker. Home/office VPN CIDRs remain operator-supplied because those networks are not discoverable from AWS or the remote hosts automatically. A clean candidate remains a recommendation: the operator/network owner must review and approve it before setting the inventory's `obstack_wg_address` and `obstack_wg_vpn_ip` values or running the mutating `wireguard.yml` playbook.
 
 Never use this preflight to justify opening broad security-group ingress or enabling full-tunnel routing.
+
+
+## Automated Ansible discovery (read-only)
+
+Prerequisites: a verified inventory (hosts in group `wireguard`), Ansible collections installed, AWS CLI installed and authenticated on the controller with read-only `ec2:DescribeVpcs` and `ec2:DescribeSubnets` permissions. Use a dedicated AWS profile or short-lived credentials; do not store credentials in inventory or repository files.
+
+From the repository root, pass the approved target VPC CIDR and the network-owner-confirmed home/office VPN ranges as variables. Candidate overlay ranges are proposals only:
+
+```bash
+ansible-playbook -i ansible/inventory/hosts.yml \
+  ansible/playbooks/cidr-overlap-discovery.yml \
+  -e '{
+    "obstack_aws_region": "YOUR_AWS_REGION",
+    "obstack_approved_vpc_cidr": "YOUR_APPROVED_VPC_CIDR",
+    "obstack_home_office_vpn_cidrs": ["YOUR_HOME_VPN_CIDR", "YOUR_OFFICE_VPN_CIDR"],
+    "obstack_candidate_overlay_cidrs": ["10.77.0.0/24", "10.240.0.0/24", "172.30.240.0/24", "192.168.240.0/24"]
+  }'
+```
+
+The controller writes temporary normalized inputs and per-host discovery records beneath `ansible/tmp/network-discovery` with restrictive permissions. Treat these as internal network information and remove them after review. AWS calls and remote host collection are read-only; the playbook does not change routes, Docker, security groups, or WireGuard. A successful checker result does not grant approval: the network owner must confirm a candidate and only then may it be set in inventory for a separate, explicitly approved WireGuard deployment.
+
+The discovery covers route tables and Docker IPAM subnets on the selected inventory hosts. It does not magically discover unadvertised home/office ranges, disconnected VPCs, or VPN routing outside the supplied AWS region/account; provide those explicitly.
