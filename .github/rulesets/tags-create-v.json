@@ -1,0 +1,26 @@
+{
+  "name": "obstack-version-tag-creation",
+  "target": "tag",
+  "source": "0FFSIDE1/ObStack",
+  "enforcement": "active",
+  "bypass_actors": [
+    {
+      "actor_id": 173492580,
+      "actor_type": "User",
+      "bypass_mode": "always"
+    }
+  ],
+  "conditions": {
+    "ref_name": {
+      "include": [
+        "refs/tags/v*"
+      ],
+      "exclude": []
+    }
+  },
+  "rules": [
+    {
+      "type": "creation"
+    }
+  ]
+}
