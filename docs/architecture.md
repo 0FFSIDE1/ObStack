@@ -7,6 +7,7 @@ The repository default branch (`main`) currently contains only `README.md`, `.gi
 - OS: Ubuntu 24.04 LTS (user-confirmed intended release; host state not independently verified).
 - Initial resources are fixed for now: 2 vCPU, 2 GB RAM, 14 GB disk on AWS EC2. User says the host could be increased later. The EBS volume type and whether the 14 GB refers to root volume capacity still need confirmation.
 - Docker Engine: not installed.
+- Initial monitoring scope: approximately **5–10 projects** (user-confirmed estimate); exact project names, environments, host counts, and workload inventory remain to be discovered.
 - Requested retention: metrics 30 days; logs 20 days.
 - These are user-provided intended specifications, not independently verified host facts.
 
