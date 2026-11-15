@@ -6,6 +6,7 @@ all:
           ansible_host: REPLACE_WITH_CENTRAL_MANAGEMENT_ADDRESS
           obstack_arch: arm64
           obstack_wg_address: REPLACE_WITH_APPROVED_HUB_ADDRESS_CIDR
+          obstack_wg_vpn_ip: REPLACE_WITH_APPROVED_CENTRAL_WIREGUARD_IPV4
           obstack_wg_public_key: REPLACE_WITH_HUB_PUBLIC_KEY
     monitored:
       hosts:
