@@ -6,6 +6,7 @@ on:
     paths:
       - "ansible/**"
       - "ansible.cfg"
+      - ".ansible-lint"
       - "compose.yaml"
       - "nginx/**"
       - ".github/workflows/ansible-validation.yml"
