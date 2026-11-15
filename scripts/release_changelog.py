@@ -53,7 +53,7 @@ def pending_notes(metadata: str, version: str) -> tuple[str, str]:
         and item != "..."
     ]
     if not categories_seen:
-        raise ValueError(f"Pending notes for {version} must use at least one supported Keep a Changelog category.")
+        raise ValueError(f"Pending notes for {version} must use at least one supported category from Keep a Changelog.")
     if not meaningful:
         raise ValueError(f"Pending notes for {version} must contain at least one meaningful bullet under a supported category.")
     notes = f"## [{version}] - {release_date}\n\n{body}\n"
