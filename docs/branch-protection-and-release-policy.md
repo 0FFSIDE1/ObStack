@@ -36,6 +36,8 @@ Enable all of the following:
 11. **Do not allow deletions** of protected branches.
 12. Do not add bypass actors or deploy bots to the bypass list.
 
+CI is configured so feature-branch pull requests receive one unambiguous configuration check (`config`) and one unambiguous Ansible check (`Syntax, lint, Compose and Nginx validation`). Push-triggered validation runs on `main` and `release`; pull-request validation runs before merging. This avoids duplicate push/PR check contexts on the same feature-branch commit.
+
 The PR template at `.github/PULL_REQUEST_TEMPLATE.md` reminds contributors of the expected checks and review hygiene. It is a checklist, not a security boundary; branch protection is the enforcement layer.
 
 ## Protect release tags
