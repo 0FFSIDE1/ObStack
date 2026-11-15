@@ -24,7 +24,8 @@
           - docker
           - inspect
           - --format
-          - "name={{'{{'}}.Name{{'}}'}} image={{'{{'}}.Config.Image{{'}}'}} state={{'{{'}}.State.Status{{'}}'}} restart={{'{{'}}.HostConfig.RestartPolicy.Name{{'}}'}} mounts={{'{{'}}range .Mounts{{'}}'}}{{'{{'}}.Source{{'}}'}}:{{'{{'}}.Destination{{'}}'}}:{{'{{'}}.RW{{'}}'}};{{'{{'}}end{{'}}'}} compose_project={{'{{'}}index .Config.Labels "com.docker.compose.project"{{'}}'}} compose_service={{'{{'}}index .Config.Labels "com.docker.compose.service"{{'}}'}}"
+          - >-
+            name={{'{{'}}.Name{{'}}'}} image={{'{{'}}.Config.Image{{'}}'}} state={{'{{'}}.State.Status{{'}}'}} restart={{'{{'}}.HostConfig.RestartPolicy.Name{{'}}'}} mounts={{'{{'}}range .Mounts{{'}}'}}{{'{{'}}.Source{{'}}'}}:{{'{{'}}.Destination{{'}}'}}:{{'{{'}}.RW{{'}}'}};{{'{{'}}end{{'}}'}} compose_project={{'{{'}}index .Config.Labels "com.docker.compose.project"{{'}}'}} compose_service={{'{{'}}index .Config.Labels "com.docker.compose.service"{{'}}'}}
           - "{{ item }}"
       loop: "{{ obstack_alloy_ids | default([]) }}"
       register: alloy_inspect
