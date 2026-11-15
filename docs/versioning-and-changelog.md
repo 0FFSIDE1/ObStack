@@ -26,10 +26,20 @@ The metadata must match the tag, contain a valid ISO date, and include at least
 one meaningful bullet. Keep `CHANGELOG.md`'s `[Unreleased]` section for ongoing
 work; do not move pending notes into the versioned history before deployment.
 
+## Required release automation secret
+
+Configure repository secret `OBSTACK_RELEASE_AUTOMATION_TOKEN` before releasing.
+Use a fine-grained PAT restricted to this repository with **Contents: Read and
+write** and **Pull requests: Read and write**. The workflow preflight checks that
+the secret is present before deployment. The token is used after successful
+deployment to push the promotion branch and open a PR; using this dedicated
+token allows GitHub Actions checks to trigger on that generated PR.
+
 ## Release ordering and failure behavior
 
 1. The release tag must point to the exact reviewed `release` branch HEAD.
-2. Pending metadata, configuration CI, and Ansible validation are checked.
+2. Pending metadata, configuration CI, Ansible validation, and the automation-token
+   preflight are checked.
 3. Production deployment runs only when all those checks pass.
 4. Only after deployment succeeds, the workflow publishes a GitHub Release using
    the pending metadata as its notes.
