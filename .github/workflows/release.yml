@@ -2,6 +2,8 @@ name: Release and deploy ObStack
 
 on:
   push:
+    branches-ignore:
+      - "**"
     tags:
       - "v[0-9]*.[0-9]*.[0-9]*"
   workflow_dispatch:
@@ -44,6 +46,17 @@ jobs:
       OBSTACK_GRAFANA_ADMIN_PASSWORD: ${{ secrets.OBSTACK_GRAFANA_ADMIN_PASSWORD }}
       OBSTACK_ANSIBLE_VAULT_PASSWORD_FILE: ${{ runner.temp }}/obstack-vault-password
     steps:
+      - name: Validate release tag
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Release tag must use vMAJOR.MINOR.PATCH (for example v1.2.3)"
+            exit 1
+          fi
+
       - name: Check out tagged release
         uses: actions/checkout@v4
         with:
