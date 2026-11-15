@@ -51,6 +51,8 @@ jobs:
             echo "Checking ${playbook}"
             ansible-playbook -i ansible/inventory/hosts.example.yml "${playbook}" --syntax-check
           done
+      - name: Validate central certificate renewal shell script
+        run: bash -n ansible/roles/certificate_renewal/files/renew-central-cert.sh
       - name: Run Ansible Lint
         run: ansible-lint --profile basic ansible/
       - name: Validate Alertmanager template in sink and webhook modes

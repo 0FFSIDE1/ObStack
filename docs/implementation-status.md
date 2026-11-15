@@ -19,6 +19,9 @@
 - First-pass native WireGuard hub/spoke Ansible role and explicitly gated mutating playbook; peer address/key uniqueness, keypair validation, actual hub-derived AllowedIPs and static peer egress validation added.
 - Central UFW UDP 51820 ingress is scoped to the verified static public egress IPv4 for each enrolled spoke; AWS Security Group allowlisting remains a separate manual prerequisite.
 - First-pass central-host Ansible workflow: Ubuntu 24.04 ARM64 checks, Africa/Lagos timezone, baseline security configuration, UFW/fail2ban/unattended upgrades, official Docker Engine/Compose installation, private CA and WireGuard-IP server certificate generation, Docker Compose deployment/startup and readiness checks.
+- Central-host SSH hardening with key-only authentication after authorized_keys preflight, root login disabled, forwarding disabled, and sshd syntax validation before reload.
+- Local command auditing using auditd execve/execveat records and sudo command logs, with bounded local log retention.
+- Weekly systemd-managed central leaf TLS certificate renewal, chain/key validation, Nginx config test/reload and rollback on failure; CA rotation remains a separately planned operation.
 - Gated public-CA distribution playbook; transfers only ca.crt, never private keys.
 - Read-only central validation playbook for Compose services, readiness endpoints, Prometheus receiver flag, TLS trust and authenticated/unauthenticated ingress behavior.
 - Alloy onboarding role with preserve-by-default policy, HTTPS/TLS verification and password-file support. It stages config/secrets only and does not restart or replace existing containers.
@@ -29,7 +32,7 @@
 ## Not yet implemented or validated
 
 - Final VPC/overlay CIDR, real host inventory, public keys, private keys and Ansible Vault secrets.
-- Central provisioning playbook has not yet been run; controller collections, SSH source CIDR, repository path, certificate trust distribution and host-specific values must be supplied.
+- Central provisioning playbook has not yet been run; controller collections, SSH key login, SSH source CIDR, repository path, certificate trust distribution and host-specific values must be supplied. Audit log off-host forwarding and tamper-resistant retention are not yet configured.
 - Runtime validation of WireGuard, firewall/security-group behavior and pilot handshakes.
 - A configured CI workflow is not proof that a particular commit passed. Check the latest pull-request run for `config` and `Syntax, lint, Compose and Nginx validation` before merge.
 - CA trust distribution and central end-to-end validation have not been run against a deployed host.
@@ -37,7 +40,7 @@
 - Host-specific Compose adoption for existing Alloy containers; config/secret/CA/host metric mounts.
 - Actual log sources (Docker socket, journald or files) per server.
 - Remote telemetry acceptance, payload delivery and authentication tests from AMD64 and ARM64 pilot hosts.
-- DNS/certificate lifecycle automation, additional project/application dashboards, exporter deployment, and destination-specific alert routes. Generic webhook delivery is implemented but no actual endpoint has been provided; if unset, Alertmanager intentionally uses a sink.
+- DNS/public-CA lifecycle and CA rotation automation, additional project/application dashboards, exporter deployment, and destination-specific alert routes. Generic webhook delivery is implemented but no actual endpoint has been provided; if unset, Alertmanager intentionally uses a sink.
 - Backup/restore, off-host storage, RPO/RTO and DR tests.
 - Verification of the preliminary ISO/IEC 27002:2022 evidence mapping, security review and native ARM64 runtime behavior.
 - Host filesystem/free-space and service-level capacity alerts; current Prometheus TSDB block-cap alerts are implemented but do not indicate OS/disk free-space headroom.

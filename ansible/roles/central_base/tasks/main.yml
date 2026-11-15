@@ -44,22 +44,6 @@
       bantime = 1h
   notify: Restart fail2ban
 
-- name: Apply conservative SSH hardening without disabling password authentication
-  ansible.builtin.copy:
-    dest: /etc/ssh/sshd_config.d/60-obstack-hardening.conf
-    owner: root
-    group: root
-    mode: "0644"
-    content: |
-      PermitRootLogin {{ obstack_ssh_permit_root_login }}
-      PasswordAuthentication {{ obstack_ssh_password_authentication }}
-      X11Forwarding no
-      AllowTcpForwarding local
-      MaxAuthTries 4
-      ClientAliveInterval 300
-      ClientAliveCountMax 2
-  notify: Validate and reload SSH
-
 - name: Require a known administrator source CIDR before enabling the host firewall
   ansible.builtin.assert:
     that:
