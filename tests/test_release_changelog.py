@@ -71,3 +71,64 @@ class ReleaseChangelogTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+from scripts.generate_release_metadata import build_metadata, classify
+
+
+class GenerateReleaseMetadataTests(unittest.TestCase):
+    def test_generates_categorized_notes_from_merged_prs(self):
+        prs = [
+            {
+                "number": 21,
+                "title": "feat(metrics): add scrape health panel",
+                "labels": [],
+                "mergeCommit": {"oid": "abc123"},
+                "url": "https://github.com/0FFSIDE1/ObStack/pull/21",
+            },
+            {
+                "number": 22,
+                "title": "fix: correct retention validation",
+                "labels": [],
+                "mergeCommit": {"oid": "def456"},
+                "url": "https://github.com/0FFSIDE1/ObStack/pull/22",
+            },
+            {
+                "number": 23,
+                "title": "chore: update test tooling",
+                "labels": [],
+                "mergeCommit": {"oid": "ghi789"},
+                "url": "https://github.com/0FFSIDE1/ObStack/pull/23",
+            },
+        ]
+        result = build_metadata("v1.2.3", prs, {"abc123", "def456", "ghi789"}, "2026-11-15")
+        self.assertIn("### Added", result)
+        self.assertIn("add scrape health panel", result)
+        self.assertIn("### Fixed", result)
+        self.assertIn("correct retention validation", result)
+        self.assertNotIn("update test tooling", result)
+
+    def test_explicit_label_overrides_title_inference(self):
+        pr = {"number": 24, "title": "improve alert routing", "labels": [{"name": "release:security"}]}
+        self.assertEqual(classify(pr), "Security")
+
+    def test_release_none_label_excludes_pr(self):
+        pr = {"number": 25, "title": "feat: internal-only", "labels": [{"name": "release:none"}]}
+        self.assertEqual(classify(pr), "None")
+
+    def test_requires_classification_for_nonconventional_title(self):
+        pr = {"number": 26, "title": "Improve things", "labels": []}
+        with self.assertRaisesRegex(ValueError, "no release label"):
+            classify(pr)
+
+    def test_rejects_conflicting_release_labels(self):
+        pr = {
+            "number": 27,
+            "title": "feat: something",
+            "labels": [{"name": "release:added"}, {"name": "release:fixed"}],
+        }
+        with self.assertRaisesRegex(ValueError, "conflicting release labels"):
+            classify(pr)
+
+    def test_rejects_empty_release_window(self):
+        with self.assertRaisesRegex(ValueError, "No user-facing merged pull requests"):
+            build_metadata("v1.2.3", [], set(), "2026-11-15")
