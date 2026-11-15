@@ -112,7 +112,21 @@
 - name: Require an HTTPS URL for the optional Alertmanager webhook
   ansible.builtin.assert:
     that:
-      - obstack_alertmanager_webhook_url | default('') == '' or obstack_alertmanager_webhook_url is match('^https://[^ ]+  ansible.builtin.copy:
+      - "obstack_alertmanager_webhook_url | default('') == '' or obstack_alertmanager_webhook_url is match('^https://[^ ]+$')"
+    fail_msg: "OBSTACK_ALERTMANAGER_WEBHOOK_URL must be empty or an HTTPS URL."
+  no_log: true
+
+- name: Render protected Alertmanager configuration from environment-backed optional webhook
+  ansible.builtin.template:
+    src: "{{ obstack_repo_root }}/alertmanager/alertmanager.yml.j2"
+    dest: "{{ obstack_install_dir }}/alertmanager/alertmanager.yml"
+    owner: root
+    group: obstack-nginx
+    mode: "0640"
+  no_log: true
+
+- name: Copy Nginx configuration readable by its dedicated unprivileged group
+  ansible.builtin.copy:
     src: "{{ obstack_repo_root }}/nginx/"
     dest: "{{ obstack_install_dir }}/nginx/"
     owner: root
