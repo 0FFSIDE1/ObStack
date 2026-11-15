@@ -1,6 +1,6 @@
 # ObStack — WireGuard Network Architecture
 
-**Status:** Selected design documented; first-pass automation and authenticated ingress configuration committed; no deployment performed.  
+**Status:** Selected design, authenticated ingestion configuration, WireGuard provisioning, public-CA distribution, central validation and CIDR discovery automation are committed. No AWS or production-host deployment has been performed.  
 **Scope:** One future AWS EC2 ARM64 hub and a dynamic fleet of Ubuntu 24.04 remote servers (currently ten are identified: five AMD64 and five ARM64).  
 **Transport:** Native self-managed WireGuard, hub-and-spoke.  
 **Hub endpoint:** Existing Elastic IP reported by user, but not associated with an EC2 instance. VPC/EC2 do not yet exist.
