@@ -62,8 +62,8 @@ jobs:
             -out /tmp/obstack-nginx/tls/central.crt \
             -subj "/CN=obstack-ci"
           touch /tmp/obstack-nginx/auth/metrics.htpasswd /tmp/obstack-nginx/auth/logs.htpasswd
-          chgrp 20000 /tmp/obstack-nginx/tls/central.key /tmp/obstack-nginx/auth/metrics.htpasswd /tmp/obstack-nginx/auth/logs.htpasswd
-          chmod 0640 /tmp/obstack-nginx/tls/central.key /tmp/obstack-nginx/auth/metrics.htpasswd /tmp/obstack-nginx/auth/logs.htpasswd
+          sudo chown root:20000 /tmp/obstack-nginx/tls/central.key /tmp/obstack-nginx/auth/metrics.htpasswd /tmp/obstack-nginx/auth/logs.htpasswd
+          sudo chmod 0640 /tmp/obstack-nginx/tls/central.key /tmp/obstack-nginx/auth/metrics.htpasswd /tmp/obstack-nginx/auth/logs.htpasswd
           docker run --rm --user 101:20000 --entrypoint sh \
             -v /tmp/obstack-nginx/tls/central.key:/etc/nginx/tls/central.key:ro \
             -v /tmp/obstack-nginx/auth:/etc/nginx/auth:ro \
