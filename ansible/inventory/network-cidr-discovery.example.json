@@ -1,0 +1,25 @@
+{
+  "networks": [
+    {
+      "name": "AWS VPC (replace with discovered CIDR)",
+      "cidr": "REPLACE_WITH_VPC_CIDR",
+      "source": "AWS"
+    },
+    {
+      "name": "Home or office VPN (add each applicable route)",
+      "cidr": "REPLACE_WITH_HOME_OR_OFFICE_CIDR",
+      "source": "User-provided VPN route"
+    },
+    {
+      "name": "Remote host route or Docker network (add each discovered CIDR)",
+      "cidr": "REPLACE_WITH_HOST_OR_DOCKER_CIDR",
+      "source": "Remote host discovery"
+    }
+  ],
+  "candidates": [
+    "10.77.0.0/24",
+    "10.240.0.0/24",
+    "172.30.240.0/24",
+    "192.168.240.0/24"
+  ]
+}
