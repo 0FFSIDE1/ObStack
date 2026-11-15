@@ -116,8 +116,8 @@
   ansible.builtin.copy:
     dest: "{{ obstack_install_dir }}/.env"
     owner: root
-    group: obstack-nginx
-    mode: "0640"
+    group: root
+    mode: "0600"
     content: |
       GRAFANA_ADMIN_USER={{ obstack_grafana_admin_user }}
       GRAFANA_ADMIN_PASSWORD={{ obstack_grafana_admin_password }}
