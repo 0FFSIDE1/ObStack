@@ -9,6 +9,7 @@
 - [x] Draft logical architecture, telemetry flows, trust boundaries, label contract, assumptions and decision list in `docs/architecture.md`.
 - [x] Record user-provided initial central resources (AWS EC2 2 vCPU / 2 GB RAM / 14 GB disk, fixed for now but potentially expandable) and retention goals (30 days metrics / 20 days logs); actual host state and capacity validation remain pending.
 - [x] Record user-confirmed central OS as Ubuntu 24.04 LTS; host state remains unverified.
+- [x] Record initial monitoring scope as approximately 5–10 projects; project names, environments, host counts, and workload inventory remain pending.
 - [ ] Confirm remote OS, networking, TLS/DNS, secrets, backups, projects and data-volume expectations.
 - [ ] Review and approve architecture.
 
