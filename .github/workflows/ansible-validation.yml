@@ -14,7 +14,7 @@ on:
       - "loki/**"
       - "prometheus/**"
       - "nginx/**"
-      - ".github/workflows/ansible-validation.yml"
+      - ".github/workflows/ansible-validation.yml"\n      - ".github/workflows/wireguard-preflight-approval.yml"
       - ".github/workflows/wireguard-preflight-approval.yml"
   pull_request:
     paths:
@@ -26,7 +26,7 @@ on:
       - "loki/**"
       - "prometheus/**"
       - "nginx/**"
-      - ".github/workflows/ansible-validation.yml"
+      - ".github/workflows/ansible-validation.yml"\n      - ".github/workflows/wireguard-preflight-approval.yml"
   workflow_dispatch:
 
 permissions:
