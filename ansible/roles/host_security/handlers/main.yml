@@ -10,5 +10,6 @@
     state: reloaded
 
 - name: Restart auditd
-  ansible.builtin.command: service auditd restart
-  changed_when: true
+  ansible.builtin.service:
+    name: auditd
+    state: restarted
