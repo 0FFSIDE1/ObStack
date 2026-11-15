@@ -58,7 +58,7 @@ Run read-only discovery before onboarding:
 
 The Alloy role defaults to preserve. It does not install a duplicate Alloy container or stop/restart an existing container. Run discovery, identify each container's Compose owner and config/data mounts, back up the existing config, then explicitly set the host's existing Alloy policy to adopt.
 
-Adoption stages a config and root-only password files; it does not automatically mount those files into a running container or restart it. A reviewed host-specific Compose change must mount:
+Adoption stages a non-secret config file and root-only password files; it does not automatically mount those files into a running container or restart it. Before mounting the password files, discover the existing Alloy container's UID/GID and grant read-only access through a dedicated group or an equivalent least-privilege mechanism. Do not make password files world-readable. A reviewed host-specific Compose change must mount:
 - The host Alloy config file at the container's Alloy config path.
 - The metrics and logs password files as /run/secrets/metrics_password and /run/secrets/logs_password.
 - /etc/obstack/pki/ca.crt as /etc/ssl/certs/obstack-ca.crt.
