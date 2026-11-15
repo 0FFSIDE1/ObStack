@@ -12,6 +12,7 @@
 - [x] Record central EC2 architecture as ARM64 / AWS Graviton (user-confirmed; verify actual instance type and host architecture before installation).
 - [x] Record initial monitoring scope as approximately 5–10 projects and 10 remote servers; project names, project-to-server mapping, environments, and workload inventory remain pending.
 - [x] Record all ten remote servers as Ubuntu 24.04 LTS: 5 AMD64 (`amd64`) and 5 ARM64 (`arm64`); per-host architecture mapping remains pending.
+- [x] Record the user's network decision: self-managed WireGuard, non-commercial workloads; no VPN has been installed and no production hosts have been changed.
 - [ ] Confirm remote OS, networking, TLS/DNS, secrets, backups, projects and data-volume expectations.
 - [ ] Review and approve architecture.
 
@@ -20,6 +21,12 @@
 - [x] Define phases, dependencies and validation gates in this document.
 - [x] Define architecture requirements: central stack images must support `linux/arm64`; remote agent/exporter artifacts must support both `linux/arm64` and `linux/amd64`, select architecture-specific binaries safely, and validate all required architectures before fleet rollout.
 - [ ] Confirm staging environment and production-change authorization boundary.
+- [x] Document selected WireGuard hub-and-spoke topology, provisional address plan, peer isolation, NAT keepalive, firewall/security-group requirements, secrets handling and failure modes in docs/network-architecture.md.
+- [ ] Confirm proposed VPN CIDR (10.77.0.0/24) does not overlap the AWS VPC, remote site networks or existing VPNs.
+- [ ] Confirm central EC2 stable public endpoint/Elastic IP, AWS Security Group ownership and remote egress UDP policy.
+- [ ] Build authoritative host inventory for all 10 servers: hostname, public endpoint if static, project/environment, architecture, assigned VPN /32, owner and maintenance window.
+- [ ] Approve private telemetry ingress design (VPN-bound service listener or authenticated TLS reverse proxy); keep Prometheus/Loki/exporters off public interfaces.
+- [ ] Define peer key generation, secure distribution, storage, rotation and revocation; ensure no private keys enter Git.
 - [ ] Choose exact supported upstream image versions and record upgrade strategy after compatibility/security review; verify multi-platform manifests and pin immutable digests where possible.
 
 ## Phase 3 — Central platform
@@ -44,9 +51,11 @@
 
 ## Phase 5 — Ansible automation
 
-- [ ] Inventory, group/host vars, common/security/Docker/observability/Nginx/firewall/backup/validation roles.
+- [ ] Inventory, group/host vars, common/security/Docker/observability/Nginx/firewall/backup/validation roles, including wireguard_hub and wireguard_peers roles.
 - [ ] Inventory architecture facts and normalized architecture variables; fail safely on unsupported architectures rather than downloading the wrong binary. Enforce ARM64-compatible artifacts for central deployment.
-- [ ] Central deployment, remote onboarding/update, exporter enablement, validation and agent removal playbooks.
+- [ ] Central deployment, WireGuard hub provisioning, remote peer onboarding/update/removal, exporter enablement, validation and agent removal playbooks.
+- [ ] Enforce least-privilege peer AllowedIPs; one unique /32 per remote; no full-tunnel or remote-to-remote routing by default.
+- [ ] Ensure private keys are generated/stored securely and never committed; support peer revocation and rotation.
 - [ ] Idempotency/syntax/lint checks; avoid unnecessary application config changes.
 
 ## Phase 6 — Alerting
@@ -65,6 +74,7 @@
 
 - [ ] Compose, Prometheus, rules, Alertmanager, Loki, Alloy, Nginx, Grafana provisioning and Ansible validation.
 - [ ] Integration checks: metrics/logs/query paths, labels, alert routes, persistent data, backup restore.
+- [ ] WireGuard tests: all ten peers connect; unique peer routes; no overlap; reboot/NAT reconnect; UDP reachability; unauthorized peer rejection; key revocation; telemetry endpoints inaccessible from public interfaces.
 - [ ] Architecture matrix checks: verify central ARM64 and remote ARM64/AMD64 image manifests, checksums, package availability and successful agent startup on all required architectures.
 - [ ] Security checks: exposed ports, credentials, TLS verification, privileges/mounts, access controls, image vulnerabilities and log leakage.
 - [ ] Controlled staging failure simulation and recovery tests.
@@ -72,7 +82,7 @@
 
 ## Phase 9 — Documentation and operations
 
-- [ ] Install/deploy/upgrade/rollback, onboarding/removal, alerting, dashboards, operations, troubleshooting, backup recovery and DR documentation.
+- [ ] Install/deploy/upgrade/rollback, WireGuard peer onboarding/removal/key rotation, alerting, dashboards, operations, troubleshooting, backup recovery and DR documentation.
 - [ ] Resource sizing and required ports, network diagram and failure-mode guidance.
 - [ ] RPO/RTO and backup retention approved and restoration rehearsed.
 
