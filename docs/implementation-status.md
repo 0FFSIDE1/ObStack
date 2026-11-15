@@ -5,24 +5,25 @@
 
 ## Implemented in repository
 
-- ARM64-pinned central Compose services: Prometheus, Loki, Grafana, Alertmanager and Blackbox Exporter.
-- Loopback-only host port bindings; observability services are not intentionally exposed publicly.
+- ARM64-pinned central Compose services: Nginx reverse proxy, Prometheus, Loki, Grafana, Alertmanager and Blackbox Exporter.
+- Backend services remain loopback-only. Nginx runs in Docker with TLS and proxies Grafana; bootstrap bind is loopback-only pending WireGuard hub readiness.
 - Prometheus 30-day time retention with a 3 GB TSDB size cap; Loki 20-day retention.
 - Grafana datasource provisioning, conservative alert rules and Blackbox probe modules.
 - Secret-free example environment and Ansible inventory.
 - Read-only Ubuntu/architecture preflight.
 - Read-only Docker/Alloy discovery that avoids container environment variables and secret values.
 - First-pass native WireGuard hub/spoke Ansible role and explicitly gated mutating playbook.
-- First-pass central-host Ansible workflow: Ubuntu 24.04 ARM64 checks, baseline security configuration, UFW/fail2ban/unattended upgrades, official Docker Engine/Compose installation, private CA and WireGuard-IP server certificate generation, Compose deployment/startup and Prometheus/Grafana readiness checks. Requires Vault credentials and explicit `obstack_apply=true`.
+- First-pass central-host Ansible workflow: Ubuntu 24.04 ARM64 checks, Africa/Lagos timezone, baseline security configuration, UFW/fail2ban/unattended upgrades, official Docker Engine/Compose installation, private CA and WireGuard-IP server certificate generation, Docker Compose deployment/startup and readiness checks for Nginx and all observability services. Requires Vault credentials and explicit `obstack_apply=true`.
+- GitHub Actions workflow for Ansible syntax checks, Ansible Lint and Compose configuration validation.
 - Alloy onboarding role with preserve-by-default policy, HTTPS/TLS verification and password-file support. It stages config/secrets only and does not restart or replace existing containers.
 
 ## Not yet implemented or validated
 
 - Final VPC/overlay CIDR, real host inventory, public keys and Ansible Vault secrets.
-- Central provisioning playbook has not been syntax-checked or run; controller collections, SSH source CIDR, repository path, certificate trust distribution and host-specific values must be supplied.
+- Central provisioning playbook has not yet passed the newly added GitHub Actions checks or been run; controller collections, SSH source CIDR, repository path, certificate trust distribution and host-specific values must be supplied.
 - Generated central TLS certificate is staged for the planned private telemetry ingress; no reverse-proxy ingress is deployed or enabled yet.
 - WireGuard role syntax/runtime validation, firewall/security-group changes and pilot handshakes.
-- Central authenticated TLS ingress and Prometheus remote-write receiver enablement.
+- Nginx currently proxies Grafana only; authenticated Prometheus remote-write and Loki push routes, rate limits and endpoint-specific authorization remain to be implemented.
 - Host-specific Compose adoption for existing Alloy containers; config/secret/CA/host metric mounts.
 - Actual log sources (Docker socket, journald or files) per server.
 - Remote telemetry acceptance and authentication tests.
