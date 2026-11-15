@@ -44,7 +44,7 @@ The central Ubuntu host timezone is set to Africa/Lagos. Chrony maintains system
 - ansible/playbooks/alloy-onboarding.yml: preserve-by-default; adoption stages config and password files only and does not restart or rewire a container.
 - Private keys and credentials remain external secrets in Ansible Vault.
 
-## Preconditions and sequence
+## CIDR overlap preflight\n\nSee [network CIDR overlap preflight](network-cidr-overlap-preflight.md) and the read-only Python checker at `ansible/scripts/check_cidr_overlaps.py`. The checker evaluates a collected input list; it does not yet auto-discover all AWS/host/Docker/home-office networks end-to-end.\n\n## Preconditions and sequence
 
 1. Confirm VPC CIDR, office/home/existing VPN ranges and route overlap.
 2. Verify the Elastic IP allocation/region and plan its association with the future hub.
