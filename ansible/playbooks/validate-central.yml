@@ -1,0 +1,129 @@
+---
+- name: Validate the deployed ObStack central stack without changing it
+  hosts: observability
+  become: true
+  gather_facts: false
+  vars:
+    obstack_expected_services:
+      - nginx
+      - prometheus
+      - loki
+      - grafana
+      - alertmanager
+      - blackbox
+  tasks:
+    - name: Require the configured central WireGuard address and CA
+      ansible.builtin.assert:
+        that:
+          - obstack_wg_vpn_ip | default('') is ansible.utils.ipv4
+        fail_msg: "Set the verified central WireGuard IPv4 address before running end-to-end validation."
+
+    - name: Validate the rendered Compose model
+      ansible.builtin.command: docker compose config --quiet
+      args:
+        chdir: "{{ obstack_install_dir | default('/opt/obstack') }}"
+      changed_when: false
+
+    - name: Collect running Compose services
+      ansible.builtin.command: docker compose ps --services --filter status=running
+      args:
+        chdir: "{{ obstack_install_dir | default('/opt/obstack') }}"
+      register: obstack_running_services
+      changed_when: false
+
+    - name: Require every central service to be running
+      ansible.builtin.assert:
+        that:
+          - item in obstack_running_services.stdout_lines
+        fail_msg: "Central service {{ item }} is not reported as running."
+      loop: "{{ obstack_expected_services }}"
+
+    - name: Check internal service readiness endpoints
+      ansible.builtin.uri:
+        url: "{{ item }}"
+        status_code: 200
+        return_content: false
+      loop:
+        - http://127.0.0.1:9090/-/ready
+        - http://127.0.0.1:3100/ready
+        - http://127.0.0.1:3000/api/health
+        - http://127.0.0.1:9093/-/ready
+        - http://127.0.0.1:9115/-/healthy
+
+    - name: Verify the Prometheus remote-write receiver is enabled
+      ansible.builtin.uri:
+        url: http://127.0.0.1:9090/api/v1/status/flags
+        status_code: 200
+        return_content: true
+      register: obstack_prometheus_flags
+
+    - name: Require remote-write receiver flag
+      ansible.builtin.assert:
+        that:
+          - obstack_prometheus_flags.json.data['web.enable-remote-write-receiver'] | string == 'true'
+        fail_msg: "Prometheus remote-write receiver is not enabled."
+
+    - name: Verify Nginx TLS health using the private CA
+      ansible.builtin.uri:
+        url: "https://{{ obstack_wg_vpn_ip }}/api/health"
+        ca_path: /etc/obstack/pki/ca.crt
+        validate_certs: true
+        status_code: 200
+
+    - name: Verify metrics ingestion rejects unauthenticated requests
+      ansible.builtin.uri:
+        url: "https://{{ obstack_wg_vpn_ip }}/api/v1/write"
+        method: GET
+        ca_path: /etc/obstack/pki/ca.crt
+        validate_certs: true
+        status_code: 401
+
+    - name: Verify logs ingestion rejects unauthenticated requests
+      ansible.builtin.uri:
+        url: "https://{{ obstack_wg_vpn_ip }}/loki/api/v1/push"
+        method: GET
+        ca_path: /etc/obstack/pki/ca.crt
+        validate_certs: true
+        status_code: 401
+
+    - name: Verify metrics credentials are accepted for an enrolled host
+      ansible.builtin.uri:
+        url: "https://{{ obstack_wg_vpn_ip }}/api/v1/write"
+        method: GET
+        url_username: "{{ hostvars[groups['monitored'][0]].obstack_alloy_metrics_username | default('obstack-' ~ groups['monitored'][0] ~ '-metrics') }}"
+        url_password: "{{ hostvars[groups['monitored'][0]].obstack_alloy_metrics_password }}"
+        force_basic_auth: true
+        ca_path: /etc/obstack/pki/ca.crt
+        validate_certs: true
+        status_code: 405
+      when: groups['monitored'] | default([]) | length > 0
+      no_log: true
+
+    - name: Verify logs credentials are accepted for an enrolled host
+      ansible.builtin.uri:
+        url: "https://{{ obstack_wg_vpn_ip }}/loki/api/v1/push"
+        method: GET
+        url_username: "{{ hostvars[groups['monitored'][0]].obstack_alloy_logs_username | default('obstack-' ~ groups['monitored'][0] ~ '-logs') }}"
+        url_password: "{{ hostvars[groups['monitored'][0]].obstack_alloy_logs_password }}"
+        force_basic_auth: true
+        ca_path: /etc/obstack/pki/ca.crt
+        validate_certs: true
+        status_code: 405
+      when: groups['monitored'] | default([]) | length > 0
+      no_log: true
+
+    - name: Validate Nginx configuration inside its container
+      ansible.builtin.command: docker compose exec -T nginx nginx -t
+      args:
+        chdir: "{{ obstack_install_dir | default('/opt/obstack') }}"
+      changed_when: false
+
+    - name: Validate Prometheus configuration inside its container
+      ansible.builtin.command: docker compose exec -T prometheus promtool check config /etc/prometheus/prometheus.yml
+      args:
+        chdir: "{{ obstack_install_dir | default('/opt/obstack') }}"
+      changed_when: false
+
+    - name: Report central validation completion
+      ansible.builtin.debug:
+        msg: "Central Compose services, readiness, Prometheus receiver, TLS trust and Nginx authentication checks passed."
