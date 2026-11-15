@@ -1,0 +1,132 @@
+---
+- name: Create private PKI directory
+  ansible.builtin.file:
+    path: /etc/obstack/pki
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Create private CA key if absent
+  ansible.builtin.command:
+    argv:
+      - openssl
+      - genpkey
+      - -algorithm
+      - RSA
+      - -pkeyopt
+      - rsa_keygen_bits:3072
+      - -out
+      - /etc/obstack/pki/ca.key
+  args:
+    creates: /etc/obstack/pki/ca.key
+  no_log: true
+
+- name: Restrict private CA key permissions
+  ansible.builtin.file:
+    path: /etc/obstack/pki/ca.key
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Create private CA certificate if absent
+  ansible.builtin.command:
+    argv:
+      - openssl
+      - req
+      - -x509
+      - -new
+      - -sha256
+      - -days
+      - "3650"
+      - -key
+      - /etc/obstack/pki/ca.key
+      - -out
+      - /etc/obstack/pki/ca.crt
+      - -subj
+      - /CN=ObStack-Private-CA
+  args:
+    creates: /etc/obstack/pki/ca.crt
+
+- name: Create central TLS private key if absent
+  ansible.builtin.command:
+    argv:
+      - openssl
+      - genpkey
+      - -algorithm
+      - RSA
+      - -pkeyopt
+      - rsa_keygen_bits:3072
+      - -out
+      - /etc/obstack/pki/central.key
+  args:
+    creates: /etc/obstack/pki/central.key
+  no_log: true
+
+- name: Restrict central TLS private key permissions
+  ansible.builtin.file:
+    path: /etc/obstack/pki/central.key
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Create central TLS certificate request if absent
+  ansible.builtin.command:
+    argv:
+      - openssl
+      - req
+      - -new
+      - -key
+      - /etc/obstack/pki/central.key
+      - -out
+      - /etc/obstack/pki/central.csr
+      - -subj
+      - "/CN={{ obstack_wg_vpn_ip }}"
+  args:
+    creates: /etc/obstack/pki/central.csr
+
+- name: Install central certificate extensions
+  ansible.builtin.copy:
+    dest: /etc/obstack/pki/central.ext
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      basicConstraints=CA:FALSE
+      keyUsage=digitalSignature,keyEncipherment
+      extendedKeyUsage=serverAuth
+      subjectAltName=IP:{{ obstack_wg_vpn_ip }}
+
+- name: Sign central TLS certificate if absent
+  ansible.builtin.command:
+    argv:
+      - openssl
+      - x509
+      - -req
+      - -in
+      - /etc/obstack/pki/central.csr
+      - -CA
+      - /etc/obstack/pki/ca.crt
+      - -CAkey
+      - /etc/obstack/pki/ca.key
+      - -CAcreateserial
+      - -out
+      - /etc/obstack/pki/central.crt
+      - -days
+      - "397"
+      - -sha256
+      - -extfile
+      - /etc/obstack/pki/central.ext
+  args:
+    creates: /etc/obstack/pki/central.crt
+  no_log: true
+
+- name: Restrict certificate and CSR permissions
+  ansible.builtin.file:
+    path: "{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - /etc/obstack/pki/ca.crt
+    - /etc/obstack/pki/central.crt
