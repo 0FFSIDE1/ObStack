@@ -113,3 +113,8 @@ Use Ansible for repeatable idempotent provisioning. Do not modify production hos
 - Central ARM64 and remote ARM64/AMD64 image, package and binary compatibility verified.
 - Backup restoration demonstrated.
 - Security/configuration checks pass and residual risks documented.
+
+
+## Central HTTPS edge and host time
+
+The central stack includes Nginx as a Dockerized TLS reverse proxy. It fronts Grafana and is loopback-bound during bootstrap; after the WireGuard hub is active, it can bind to the hub's WireGuard address for private operator access. Telemetry ingestion routes remain disabled until remote-write and Loki push authentication are implemented. The central Ubuntu host uses the Africa/Lagos timezone with chrony time synchronization; cross-host telemetry should use UTC timestamps.
