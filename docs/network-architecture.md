@@ -4,7 +4,7 @@
 **Decision owner:** User  
 **Workload classification:** Non-commercial (user-confirmed)  
 **Scope:** One central AWS EC2 observability host and ten Ubuntu 24.04 LTS remote servers (5 AMD64, 5 ARM64).  
-**Central endpoint:** AWS Elastic IP is user-confirmed; the literal address has not been supplied or recorded. All ten remote servers have public IPv4 addresses (user-confirmed); the user has confirmed these addresses are static and do not change; the literal addresses still need to be collected and verified.
+**Central endpoint:** an AWS Elastic IP is user-confirmed as available/existing, but the user has clarified that the VPC and EC2 instance have not yet been created. It is not yet associated with the future hub; verify its allocation, region and ownership, then associate it during approved provisioning. All ten remote servers have public IPv4 addresses (user-confirmed); the user has confirmed these addresses are static and do not change; the literal addresses still need to be collected and verified.
 
 ## 1. Decision
 
@@ -62,7 +62,7 @@ Peer restrictions:
 
 ## 4. AWS and host firewall policy
 
-1. Retrieve and verify the existing Elastic IP allocation and association with the central EC2 instance; record it in deployment inventory/configuration (not as a guessed value). No additional Elastic IP allocation is currently required.
+1. Before provisioning, design the VPC CIDR and subnet layout. The VPC and EC2 instance do not exist yet, so there is no current VPC CIDR and no hub association to retrieve. Verify the user-reported existing Elastic IP allocation, region and ownership; associate it with the new hub during approved provisioning. Do not assume the association already exists.
 2. Permit inbound UDP 51820 in the hub's AWS Security Group. All ten remote servers have static public IPv4 addresses (user-confirmed). Since each spoke initiates an outbound tunnel, no inbound WireGuard rule is needed on the remote hosts. Restrict hub AWS Security Group UDP 51820 ingress to the ten verified /32 source addresses (or smallest verified egress ranges). Collect the literal addresses and verify that AWS sees those same source addresses before applying the rule; do not invent or infer them.
 3. Do not add public inbound rules for Prometheus 9090, Loki 3100, Grafana 3000, Node Exporter 9100, cAdvisor or other exporter ports.
 4. On the hub, permit only required telemetry and management flows on the WireGuard interface. Remote peers should not gain general host or container-network access.
@@ -99,7 +99,7 @@ WireGuard encrypts the network path but does not replace service authentication,
 
 ## 8. Implementation sequence (not yet executed)
 
-1. Discovery: confirm VPC CIDR, remote network ranges, central public/static endpoint, UDP egress, firewall ownership, hostnames and server-to-project mapping.
+1. Discovery/design: collect remote network ranges and office/home/existing VPN ranges; select a non-overlapping AWS VPC CIDR/subnet layout and WireGuard overlay before provisioning. Verify the existing Elastic IP allocation and plan association with the future EC2 hub; confirm UDP egress, firewall ownership, hostnames and server-to-project mapping.
 2. Inventory: assign stable IDs, VPN /32 addresses, architecture, owners and environment labels to all ten hosts.
 3. Staging: validate WireGuard package/version and kernel support on central ARM64 and representative remote ARM64/AMD64 hosts.
 4. Hub: prepare configuration and security-group/firewall change plan; review management lockout and rollback steps.
