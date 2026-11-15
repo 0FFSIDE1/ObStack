@@ -1,0 +1,121 @@
+---
+# Read-only collection only. This playbook does not configure AWS, hosts, Docker, or WireGuard.
+- name: Collect local network facts from ObStack fleet
+  hosts: wireguard
+  gather_facts: false
+  tasks:
+    - name: Collect IPv4 routes
+      ansible.builtin.command: ip -4 route show table all
+      changed_when: false
+      register: obstack_cidr_routes
+
+    - name: Collect Docker network subnets (Docker may be absent on a host)
+      ansible.builtin.shell: |
+        set -o pipefail
+        docker network ls -q | xargs -r docker network inspect
+      args:
+        executable: /bin/bash
+      changed_when: false
+      failed_when: false
+      register: obstack_cidr_docker
+
+    - name: Write host discovery record to controller
+      ansible.builtin.copy:
+        dest: "{{ obstack_cidr_discovery_dir }}/{{ inventory_hostname }}.json"
+        mode: "0600"
+        content: "{{ {'host': inventory_hostname, 'routes': obstack_cidr_routes.stdout, 'docker_networks': obstack_cidr_docker.stdout | default('[]')} | to_nice_json }}\n"
+      delegate_to: localhost
+      become: false
+
+- name: Query AWS read-only and normalize overlap inputs
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    obstack_cidr_discovery_dir: "{{ playbook_dir }}/../tmp/network-discovery"
+    obstack_cidr_output: "{{ playbook_dir }}/../tmp/cidr-overlap-input.json"
+  tasks:
+    - name: Require explicit AWS region, approved VPC CIDR and candidate list
+      ansible.builtin.assert:
+        that:
+          - obstack_aws_region is defined
+          - obstack_approved_vpc_cidr is defined
+          - obstack_candidate_overlay_cidrs is defined
+          - obstack_candidate_overlay_cidrs | length > 0
+        fail_msg: "Supply obstack_aws_region, obstack_approved_vpc_cidr and obstack_candidate_overlay_cidrs. Home/office VPN CIDRs are supplied with obstack_home_office_vpn_cidrs."
+
+    - name: Create controller discovery directory
+      ansible.builtin.file:
+        path: "{{ obstack_cidr_discovery_dir }}"
+        state: directory
+        mode: "0700"
+
+    - name: Query AWS VPCs (read-only)
+      ansible.builtin.command:
+        argv:
+          - aws
+          - ec2
+          - describe-vpcs
+          - --region
+          - "{{ obstack_aws_region }}"
+          - --output
+          - json
+      changed_when: false
+      register: obstack_aws_vpcs
+
+    - name: Save AWS VPC discovery data
+      ansible.builtin.copy:
+        dest: "{{ obstack_cidr_discovery_dir }}/aws-vpcs.json"
+        mode: "0600"
+        content: "{{ obstack_aws_vpcs.stdout }}\n"
+
+    - name: Query AWS subnets (read-only)
+      ansible.builtin.command:
+        argv:
+          - aws
+          - ec2
+          - describe-subnets
+          - --region
+          - "{{ obstack_aws_region }}"
+          - --output
+          - json
+      changed_when: false
+      register: obstack_aws_subnets
+
+    - name: Save AWS subnet discovery data
+      ansible.builtin.copy:
+        dest: "{{ obstack_cidr_discovery_dir }}/aws-subnets.json"
+        mode: "0600"
+        content: "{{ obstack_aws_subnets.stdout }}\n"
+
+    - name: Normalize discovered records and supplied CIDR candidates
+      ansible.builtin.command:
+        argv: >-
+          {{
+            [
+              'python3',
+              playbook_dir ~ '/../scripts/normalize_cidr_discovery.py',
+              '--vpcs', obstack_cidr_discovery_dir ~ '/aws-vpcs.json',
+              '--subnets', obstack_cidr_discovery_dir ~ '/aws-subnets.json',
+              '--hosts-dir', obstack_cidr_discovery_dir,
+              '--approved-vpc-cidr', obstack_approved_vpc_cidr,
+              '--output', obstack_cidr_output
+            ]
+            + (obstack_home_office_vpn_cidrs | default([]) | map('regex_replace', '^(.*)$', '--vpn-cidr=\\1') | list)
+            + (obstack_candidate_overlay_cidrs | map('regex_replace', '^(.*)$', '--candidate=\\1') | list)
+          }}
+      changed_when: true
+
+    - name: Check overlaps (non-zero means conflicts or no safe candidate)
+      ansible.builtin.command:
+        argv:
+          - python3
+          - "{{ playbook_dir }}/../scripts/check_cidr_overlaps.py"
+          - "{{ obstack_cidr_output }}"
+      changed_when: false
+      register: obstack_cidr_report
+      failed_when: obstack_cidr_report.rc not in [0, 2]
+
+    - name: Print overlap report
+      ansible.builtin.debug:
+        msg: "{{ obstack_cidr_report.stdout_lines }}"
