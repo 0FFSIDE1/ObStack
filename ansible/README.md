@@ -12,7 +12,7 @@ Before running:
 - Review the VPC/subnet, security group and host firewall rules. The playbook restricts SSH to the approved administrator CIDR, allows UDP 51820 for WireGuard, and allows HTTPS only on wg0. Do not enable UFW until the SSH path and provider firewall are understood.
 - Set the repository root variable to the absolute path of the checked-out ObStack repository on the Ansible controller.
 - Put Grafana administrator credentials and a unique 24+ character password in Ansible Vault. Never put secrets in plaintext inventory or Git.
-- For every enrolled host in the monitored group, put separate unique metrics and logs passwords (24+ characters) in Ansible Vault. Usernames default to host-specific values and can be overridden in protected inventory. Central provisioning writes bcrypt htpasswd entries; secrets never enter the repository.
+- For every enrolled host in the monitored group, put separate unique metrics and logs passwords (24+ characters) in Ansible Vault. Usernames are generated deterministically from the Ansible inventory hostname; do not override them. Central provisioning writes bcrypt htpasswd entries; secrets never enter the repository.
 - Install controller collections with: ansible-galaxy collection install -r ansible/requirements.yml.
 - The host timezone defaults to Africa/Lagos; chrony maintains clock synchronization. Container services retain their default UTC time unless deliberately configured otherwise.
 - Nginx is published on loopback port 443 by default, so it is not remotely accessible during bootstrap. After the WireGuard hub is configured and verified, set the Nginx bind address to the hub's WireGuard IPv4 address and rerun the central playbook. Keep AWS security-group TCP 443 closed to the public internet.
