@@ -1,0 +1,73 @@
+---
+- name: Install central TLS renewal script
+  ansible.builtin.copy:
+    src: renew-central-cert.sh
+    dest: /usr/local/sbin/obstack-renew-central-cert
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Install central WireGuard address for certificate renewal
+  ansible.builtin.copy:
+    dest: /etc/obstack/pki/renewal.env
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      OBSTACK_WG_VPN_IP={{ obstack_wg_vpn_ip }}
+
+- name: Install certificate renewal systemd service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/obstack-cert-renew.service
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Renew ObStack central TLS certificate
+      Wants=docker.service
+      After=docker.service network-online.target
+      ConditionPathExists=/etc/obstack/pki/central.crt
+      ConditionPathExists=/etc/obstack/pki/ca.key
+
+      [Service]
+      Type=oneshot
+      User=root
+      EnvironmentFile=/etc/obstack/pki/renewal.env
+      ExecStart=/usr/local/sbin/obstack-renew-central-cert
+      TimeoutStartSec=5min
+      PrivateTmp=true
+      ProtectHome=true
+      NoNewPrivileges=true
+
+- name: Install weekly certificate renewal timer
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/obstack-cert-renew.timer
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Weekly ObStack TLS certificate renewal check
+
+      [Timer]
+      OnCalendar=weekly
+      OnBootSec=15min
+      Persistent=true
+      RandomizedDelaySec=6h
+      Unit=obstack-cert-renew.service
+
+      [Install]
+      WantedBy=timers.target
+  notify: Reload systemd and enable certificate renewal timer
+
+- name: Validate certificate renewal script syntax
+  ansible.builtin.command: bash -n /usr/local/sbin/obstack-renew-central-cert
+  changed_when: false
+
+- name: Enable and start certificate renewal timer
+  ansible.builtin.systemd:
+    name: obstack-cert-renew.timer
+    enabled: true
+    state: started
+    daemon_reload: true

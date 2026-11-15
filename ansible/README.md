@@ -32,6 +32,24 @@ Example controller setup (populate values from your approved secret manager; do 
 
 Do not enable shell tracing while secrets are present. CI runs syntax/lint and config checks without production credentials and must not receive them.
 
+## Pending release metadata
+
+Prepare versioned release notes on the Ansible controller before opening the
+release PR. This playbook does not connect to production hosts or publish a
+release:
+
+```bash
+ANSIBLE_CONFIG="$PWD/ansible/ansible.cfg" ansible-playbook \
+  ansible/playbooks/prepare-release-metadata.yml \
+  -e '{"release_version":"v1.3.0","obstack_release_notes":{"Added":["Describe the new capability."],"Fixed":["Describe the fix."]}}'
+```
+
+The playbook uses the `Africa/Lagos` date, accepts only Added, Changed,
+Deprecated, Removed, Fixed and Security categories, validates meaningful
+content with `scripts/release_changelog.py`, and refuses to overwrite existing
+metadata. Review and commit the generated file through a normal PR. See
+[versioning and changelog policy](../docs/versioning-and-changelog.md).
+
 ## Central host: first-time provisioning
 
 The central host playbook provisions Ubuntu 24.04 ARM64, installs baseline security packages and Docker, creates the private ObStack CA and central server certificate, deploys the Compose stack and checks service readiness. When OBSTACK_ALERTMANAGER_WEBHOOK_URL is supplied, Ansible renders a protected Alertmanager config to enable webhook delivery of firing and resolved alerts; otherwise the default receiver is a sink and no notifications are delivered. The URL must be HTTPS and is stored in the generated config with root ownership and 0640 permissions for the dedicated container group.
@@ -59,6 +77,48 @@ After approval and during a maintenance window:
     ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/central.yml -e obstack_apply=true
 
 Mutating playbooks require obstack_apply=true. No AWS resources, security groups or Elastic IP associations are created or modified by Ansible.
+
+## Central-host SSH, command auditing and TLS renewal
+
+The central playbook applies the following controls after checking that the
+active Ansible login already has a non-empty `authorized_keys` file:
+
+- SSH public-key authentication only; password and keyboard-interactive
+  authentication disabled, root login denied, and forwarding disabled.
+- SSH configuration is syntax-checked before the daemon is reloaded. Keep the
+  current SSH session open and verify a second key-based session before
+  closing it. Supply the verified administrator CIDR before UFW is enabled.
+- `auditd` records process execution syscalls (`execve`/`execveat`) with
+  arguments in `/var/log/audit/audit.log`, and watches SSH/sudo/audit policy
+  changes. Query with `ausearch -k obstack-command-exec`.
+- Sudo command invocations are separately recorded in
+  `/var/log/sudo/commands.log`. Both log locations are root-controlled.
+  Audit records are local to this EC2 instance; they are not tamper-proof
+  against a root compromise and are not yet forwarded off-host. Shell built-ins
+  that do not execute a process are not individually captured by execve audit.
+- A weekly persistent systemd timer checks the central leaf certificate and
+  renews it when it has 30 days or less remaining, verifies the chain/key, then
+  tests and reloads the Docker Nginx service. Failed renewal is visible in
+  `journalctl -u obstack-cert-renew.service`; the previous certificate is
+  restored if Nginx rejects the new one. The private CA is not automatically
+  rotated; CA expiry within 90 days raises a failure requiring planned CA
+  rotation and renewed trust distribution.
+
+Useful checks:
+
+```bash
+sudo sshd -t
+sudo sshd -T | grep -E 'passwordauthentication|permitrootlogin|pubkeyauthentication|authenticationmethods'
+sudo systemctl status auditd obstack-cert-renew.timer
+sudo ausearch -k obstack-command-exec --start today
+sudo tail -n 50 /var/log/sudo/commands.log
+sudo journalctl -u obstack-cert-renew.service
+sudo systemctl list-timers obstack-cert-renew.timer
+```
+
+This config is repository automation only until the explicitly gated central
+Ansible playbook is run during an approved maintenance window. Keep a recovery
+path through the EC2 console/SSM before changing SSH authentication policy.
 
 ## WireGuard hub and spokes
 

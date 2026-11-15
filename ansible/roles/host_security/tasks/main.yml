@@ -1,0 +1,154 @@
+---
+- name: Require a non-root Ansible SSH login identity
+  ansible.builtin.assert:
+    that:
+      - ansible_user is defined
+      - ansible_user | length > 0
+      - ansible_user != "root"
+    fail_msg: "Connect with a named non-root administrator account; direct root SSH is disabled."
+
+- name: Resolve the Ansible SSH login user's home directory
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ ansible_user }}"
+
+- name: Verify the active Ansible login already has a public-key login path
+  ansible.builtin.stat:
+    path: "{{ getent_passwd[ansible_user][4] }}/.ssh/authorized_keys"
+  register: obstack_admin_authorized_keys
+
+- name: Refuse to disable password authentication without an installed SSH key
+  ansible.builtin.assert:
+    that:
+      - obstack_admin_authorized_keys.stat.exists
+      - obstack_admin_authorized_keys.stat.isreg
+      - obstack_admin_authorized_keys.stat.size | int > 0
+    fail_msg: >-
+      Password SSH authentication will be disabled. Install and verify the
+      Ansible login user's authorized_keys first; keep an existing SSH session
+      open during rollout.
+
+- name: Install OpenSSH server hardening policy
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/60-obstack-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      Port {{ obstack_admin_ssh_port }}
+      PermitRootLogin no
+      PubkeyAuthentication yes
+      AuthenticationMethods publickey
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      PermitEmptyPasswords no
+      UsePAM yes
+      AllowAgentForwarding no
+      AllowTcpForwarding no
+      X11Forwarding no
+      MaxAuthTries 3
+      LoginGraceTime 30
+      ClientAliveInterval 300
+      ClientAliveCountMax 2
+      MaxSessions 5
+      LogLevel VERBOSE
+  notify: Validate and reload SSH
+
+- name: Install auditd and sudo audit utilities
+  ansible.builtin.apt:
+    name:
+      - auditd
+      - audispd-plugins
+      - sudo
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Configure bounded audit log retention
+  ansible.builtin.lineinfile:
+    path: /etc/audit/auditd.conf
+    regexp: "^{{ item.key }}\\s*="
+    line: "{{ item.key }} = {{ item.value }}"
+    backup: true
+  loop:
+    - { key: max_log_file, value: "20" }
+    - { key: num_logs, value: "5" }
+    - { key: max_log_file_action, value: ROTATE }
+    - { key: space_left, value: "200" }
+    - { key: admin_space_left, value: "100" }
+    - { key: space_left_action, value: SYSLOG }
+    - { key: admin_space_left_action, value: SINGLE }
+    - { key: disk_full_action, value: SUSPEND }
+  notify: Restart auditd
+
+- name: Install persistent command execution and privileged configuration audit rules
+  ansible.builtin.copy:
+    dest: /etc/audit/rules.d/50-obstack-command-audit.rules
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      -b 8192
+      -f 1
+      -a always,exit -F arch=b64 -S execve -S execveat -k obstack-command-exec
+      -w /etc/sudoers -p wa -k obstack-privileged-config
+      -w /etc/sudoers.d/ -p wa -k obstack-privileged-config
+      -w /etc/ssh/sshd_config -p wa -k obstack-ssh-config
+      -w /etc/ssh/sshd_config.d/ -p wa -k obstack-ssh-config
+      -w /etc/audit/ -p wa -k obstack-audit-config
+
+- name: Create protected sudo command log directory
+  ansible.builtin.file:
+    path: /var/log/sudo
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Configure sudo command logging
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/obstack-command-logging
+    owner: root
+    group: root
+    mode: "0440"
+    validate: "visudo -cf %s"
+    content: |
+      Defaults logfile="/var/log/sudo/commands.log"
+      Defaults loglinelen=0
+
+- name: Ensure sudo command log exists with root-only access
+  ansible.builtin.file:
+    path: /var/log/sudo/commands.log
+    state: touch
+    owner: root
+    group: root
+    mode: "0600"
+    modification_time: preserve
+    access_time: preserve
+
+- name: Enable audit daemon
+  ansible.builtin.systemd:
+    name: auditd
+    enabled: true
+    state: started
+
+- name: Load persistent ObStack audit rules immediately
+  ansible.builtin.command: augenrules --load
+  changed_when: false
+
+- name: Configure bounded rotation for sudo command logs
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/obstack-sudo
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      /var/log/sudo/commands.log {
+          daily
+          rotate 7
+          compress
+          delaycompress
+          missingok
+          notifempty
+          create 0600 root root
+      }

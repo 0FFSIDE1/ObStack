@@ -5,7 +5,7 @@ This repository stores its GitHub repository rulesets in `.github/rulesets/*.jso
 ## Scope
 
 - Protect `main` and `release` with pull-request-only changes.
-- Require two approving reviews, dismiss stale approvals, require approval of the latest push, and resolve review conversations.
+- Require one approving review, dismiss stale approvals, require approval of the latest push, and resolve review conversations.
 - Require the two CI checks that have been observed on the current PR: `config` and `Syntax, lint, Compose and Nginx validation`.
 - Require signed commits and linear history; disallow force pushes and branch deletion.
 - Protect semantic version tags matching `v*`: only the repository owner can create them, and no actor can update or delete them.

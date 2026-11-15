@@ -1,0 +1,7 @@
+---
+- name: Reload systemd and enable certificate renewal timer
+  ansible.builtin.systemd:
+    daemon_reload: true
+    name: obstack-cert-renew.timer
+    enabled: true
+    state: started
