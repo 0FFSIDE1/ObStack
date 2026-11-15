@@ -109,6 +109,117 @@
     - alertmanager
     - blackbox
 
+- name: Require an HTTPS URL for the optional Alertmanager webhook
+  ansible.builtin.assert:
+    that:
+      - obstack_alertmanager_webhook_url | default('') == '' or obstack_alertmanager_webhook_url is match('^https://[^ ]+  ansible.builtin.copy:
+    src: "{{ obstack_repo_root }}/nginx/"
+    dest: "{{ obstack_install_dir }}/nginx/"
+    owner: root
+    group: obstack-nginx
+    mode: "0640"
+    directory_mode: "0750"
+
+- name: Install Grafana environment file
+  ansible.builtin.copy:
+    dest: "{{ obstack_install_dir }}/.env"
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      GRAFANA_ADMIN_USER={{ obstack_grafana_admin_user }}
+      GRAFANA_ADMIN_PASSWORD={{ obstack_grafana_admin_password }}
+      NGINX_BIND_ADDRESS={{ obstack_nginx_bind_address | default('127.0.0.1') }}
+      NGINX_AUTH_GID={{ obstack_nginx_auth_gid }}
+  no_log: true
+
+- name: Validate rendered Compose configuration
+  ansible.builtin.command: docker compose config --quiet
+  args:
+    chdir: "{{ obstack_install_dir }}"
+  changed_when: false
+
+- name: Pull pinned service images
+  ansible.builtin.command: docker compose pull
+  args:
+    chdir: "{{ obstack_install_dir }}"
+  register: obstack_pull
+  changed_when: "'Downloaded newer image' in obstack_pull.stdout or 'Pull complete' in obstack_pull.stdout"
+
+- name: Deploy and start ObStack services
+  ansible.builtin.command: docker compose up -d --remove-orphans
+  args:
+    chdir: "{{ obstack_install_dir }}"
+  register: obstack_up
+  changed_when: "'Started' in obstack_up.stdout or 'Created' in obstack_up.stdout or 'Recreated' in obstack_up.stdout"
+
+- name: Wait for Nginx TLS reverse proxy readiness
+  ansible.builtin.uri:
+    url: https://127.0.0.1/api/health
+    validate_certs: false
+    status_code: 200
+  register: nginx_ready
+  retries: 12
+  delay: 5
+  until: nginx_ready.status == 200
+
+- name: Wait for Prometheus readiness
+  ansible.builtin.uri:
+    url: http://127.0.0.1:9090/-/ready
+    status_code: 200
+  register: prometheus_ready
+  retries: 12
+  delay: 5
+  until: prometheus_ready.status == 200
+
+- name: Wait for Grafana health
+  ansible.builtin.uri:
+    url: http://127.0.0.1:3000/api/health
+    status_code: 200
+  register: grafana_ready
+  retries: 12
+  delay: 5
+  until: grafana_ready.status == 200
+
+- name: Wait for Loki readiness
+  ansible.builtin.uri:
+    url: http://127.0.0.1:3100/ready
+    status_code: 200
+  register: loki_ready
+  retries: 12
+  delay: 5
+  until: loki_ready.status == 200
+
+- name: Wait for Alertmanager readiness
+  ansible.builtin.uri:
+    url: http://127.0.0.1:9093/-/ready
+    status_code: 200
+  register: alertmanager_ready
+  retries: 12
+  delay: 5
+  until: alertmanager_ready.status == 200
+
+- name: Wait for Blackbox Exporter health
+  ansible.builtin.uri:
+    url: http://127.0.0.1:9115/-/healthy
+    status_code: 200
+  register: blackbox_ready
+  retries: 12
+  delay: 5
+  until: blackbox_ready.status == 200
+)
+    fail_msg: "OBSTACK_ALERTMANAGER_WEBHOOK_URL must be empty or an HTTPS URL."
+  no_log: true
+
+- name: Render protected Alertmanager configuration from environment-backed optional webhook
+  ansible.builtin.template:
+    src: "{{ obstack_repo_root }}/alertmanager/alertmanager.yml.j2"
+    dest: "{{ obstack_install_dir }}/alertmanager/alertmanager.yml"
+    owner: root
+    group: obstack-nginx
+    mode: "0640"
+  no_log: true
+
 - name: Copy Nginx configuration readable by its dedicated unprivileged group
   ansible.builtin.copy:
     src: "{{ obstack_repo_root }}/nginx/"
