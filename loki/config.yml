@@ -40,8 +40,5 @@ limits_config:
   reject_old_samples_max_age: 168h
   max_query_series: 500
   max_entries_limit_per_query: 5000
-ruler:
-  enable_api: false
-  enable_alertmanager_discovery: false
 analytics:
   reporting_enabled: false
