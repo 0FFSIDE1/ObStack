@@ -5,7 +5,6 @@ obstack_wg_mtu: 1380
 obstack_wg_keepalive: 25
 obstack_wg_hub_group: observability
 obstack_wg_spoke_group: monitored
-obstack_wg_hub_allowed_ip: 10.77.0.1/32
 obstack_wg_private_key: ""
 obstack_wg_public_key: ""
 obstack_wg_address: ""
