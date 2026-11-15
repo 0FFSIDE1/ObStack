@@ -1,6 +1,6 @@
 # ObStack implementation status
 
-**Branch:** codex/phase-1-discovery-architecture  
+**Branch:** feat/phase-1-discovery-architecture  
 **Status:** Central stack, authenticated ingestion configuration, first-pass WireGuard/CA automation and validation playbooks are committed. CI and runtime validation are pending; nothing has been deployed.
 
 ## Implemented in repository
