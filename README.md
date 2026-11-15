@@ -14,8 +14,11 @@ The initial repository implementation is on branch codex/phase-1-discovery-archi
 - Each enrolled host has separate metrics and logs Basic Auth credentials stored in Ansible Vault and bcrypt htpasswd files.
 - TLS is terminated by Nginx using a central certificate signed by the private ObStack CA. A gated Ansible playbook distributes only the public CA certificate to spokes.
 - Prometheus target retention is configured for 30 days with a 3 GB TSDB size cap; Loki retention is configured for 20 days.
-- Grafana datasources are provisioned from files.
+- Grafana datasources and a baseline central platform overview dashboard are provisioned from files.
+- Prometheus rules alert on unavailable scrape targets, failed configuration reloads and TSDB storage nearing its configured cap; host filesystem headroom alerts still require host-level metrics.
 - Ansible includes read-only discovery, gated central provisioning, WireGuard hub/spoke provisioning, CA distribution and read-only central validation.
+
+CI validates Ansible, Compose, Nginx, Prometheus, Alertmanager, Loki, Blackbox Exporter and Grafana provisioning/dashboard assets. A passing CI run is not yet evidence of deployed runtime behavior.
 
 See docs/implementation-status.md, docs/architecture.md, docs/network-architecture.md, docs/telemetry-ingestion.md and docs/implementation-plan.md.
 
