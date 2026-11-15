@@ -8,8 +8,8 @@ The repository default branch (`main`) currently contains only `README.md`, `.gi
 - CPU architecture: **ARM64 / AWS Graviton** (user-confirmed; instance type and actual host state still need verification).
 - Initial resources are fixed for now: 2 vCPU, 2 GB RAM, 14 GB disk on AWS EC2. User says the host could be increased later. The EBS volume type and whether the 14 GB refers to root volume capacity still need confirmation.
 - Docker Engine: not installed.
-- Initial monitoring scope: approximately **5–10 projects** and **6 remote servers** (user-confirmed); exact project names, project-to-server mapping, environments, and workload inventory remain to be discovered.
-- Remote OS/architecture: all six remote servers are **Ubuntu 24.04 LTS**, with a mixed **ARM64 (`arm64`) and x86-64 (`amd64`)** fleet (user-confirmed). The per-host architecture mapping is still needed.
+- Initial monitoring scope: approximately **5–10 projects** and **10 remote servers** (user-confirmed); exact project names, project-to-server mapping, environments, and workload inventory remain to be discovered.
+- Remote OS/architecture: all ten remote servers are **Ubuntu 24.04 LTS**: **5 AMD64 (`amd64`) and 5 ARM64 (`arm64`)** (user-confirmed). The per-host architecture mapping is still needed.
 - Requested retention: metrics 30 days; logs 20 days.
 - These are user-provided intended specifications, not independently verified host facts.
 
@@ -74,7 +74,7 @@ Use Ansible for repeatable idempotent provisioning. Do not modify production hos
 ## 8. Decisions required
 
 1. Confirm EC2 storage details (EBS volume type; root-volume capacity); host expansion is possible but not currently approved/specified.
-2. Verify central EC2 instance type/kernel architecture and map each of the six remote servers to ARM64 or AMD64; gather project/server/service inventory.
+2. Verify central EC2 instance type/kernel architecture and map each of the ten remote servers to ARM64 or AMD64; gather project/server/service inventory.
 3. VPN/network topology, allowed peers, firewall owner and telemetry endpoint reachability.
 4. DNS and TLS issuer/renewal.
 5. Authentication, secrets backend, RBAC and MFA expectations.
