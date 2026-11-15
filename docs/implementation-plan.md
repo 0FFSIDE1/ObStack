@@ -23,7 +23,8 @@
 - [ ] Confirm staging environment and production-change authorization boundary.
 - [x] Document selected WireGuard hub-and-spoke topology, provisional address plan, peer isolation, NAT keepalive, firewall/security-group requirements, secrets handling and failure modes in docs/network-architecture.md.
 - [ ] Confirm proposed VPN CIDR (10.77.0.0/24) does not overlap the AWS VPC, remote site networks or existing VPNs.
-- [ ] Confirm central EC2 stable public endpoint/Elastic IP, AWS Security Group ownership and remote egress UDP policy.
+- [x] Confirm central EC2 has an AWS Elastic IP (user-confirmed; exact address and association still need verification during deployment discovery).
+- [ ] Confirm AWS Security Group ownership, UDP 51820 ingress policy and remote egress UDP policy.
 - [ ] Build authoritative host inventory for all 10 servers: hostname, public endpoint if static, project/environment, architecture, assigned VPN /32, owner and maintenance window.
 - [ ] Approve private telemetry ingress design (VPN-bound service listener or authenticated TLS reverse proxy); keep Prometheus/Loki/exporters off public interfaces.
 - [ ] Define peer key generation, secure distribution, storage, rotation and revocation; ensure no private keys enter Git.
