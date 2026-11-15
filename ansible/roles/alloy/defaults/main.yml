@@ -1,10 +1,12 @@
 ---
-# preserve is the safe default for hosts that already run Alloy.
 obstack_alloy_existing_policy: preserve
 obstack_alloy_config_path: /etc/alloy/config.alloy
+obstack_alloy_secrets_dir: /etc/alloy/secrets
+obstack_alloy_metrics_password: ""
+obstack_alloy_logs_password: ""
+obstack_alloy_metrics_username: obstack-agent
+obstack_alloy_logs_username: obstack-agent
 obstack_alloy_remote_write_url: https://metrics.obstack.internal/api/v1/write
 obstack_alloy_loki_url: https://logs.obstack.internal/loki/api/v1/push
 obstack_alloy_ca_file: /etc/ssl/certs/obstack-ca.crt
 obstack_alloy_tenant_id: obstack
-obstack_alloy_username: ""
-obstack_alloy_password: ""
