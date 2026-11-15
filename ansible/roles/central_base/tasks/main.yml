@@ -54,7 +54,7 @@
       PermitRootLogin {{ obstack_ssh_permit_root_login }}
       PasswordAuthentication {{ obstack_ssh_password_authentication }}
       X11Forwarding no
-      AllowTcpForwarding no
+      AllowTcpForwarding local
       MaxAuthTries 4
       ClientAliveInterval 300
       ClientAliveCountMax 2
