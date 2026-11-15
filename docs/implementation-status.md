@@ -1,7 +1,7 @@
 # ObStack implementation status
 
 **Branch:** codex/phase-1-discovery-architecture  
-**Status:** Initial stack plus first-pass WireGuard and Alloy automation committed; validation and deployment remain pending.
+**Status:** Initial stack plus first-pass central provisioning, WireGuard and Alloy automation committed; validation and deployment remain pending.
 
 ## Implemented in repository
 
@@ -13,11 +13,14 @@
 - Read-only Ubuntu/architecture preflight.
 - Read-only Docker/Alloy discovery that avoids container environment variables and secret values.
 - First-pass native WireGuard hub/spoke Ansible role and explicitly gated mutating playbook.
+- First-pass central-host Ansible workflow: Ubuntu 24.04 ARM64 checks, baseline security configuration, UFW/fail2ban/unattended upgrades, official Docker Engine/Compose installation, private CA and WireGuard-IP server certificate generation, Compose deployment/startup and Prometheus/Grafana readiness checks. Requires Vault credentials and explicit `obstack_apply=true`.
 - Alloy onboarding role with preserve-by-default policy, HTTPS/TLS verification and password-file support. It stages config/secrets only and does not restart or replace existing containers.
 
 ## Not yet implemented or validated
 
 - Final VPC/overlay CIDR, real host inventory, public keys and Ansible Vault secrets.
+- Central provisioning playbook has not been syntax-checked or run; controller collections, SSH source CIDR, repository path, certificate trust distribution and host-specific values must be supplied.
+- Generated central TLS certificate is staged for the planned private telemetry ingress; no reverse-proxy ingress is deployed or enabled yet.
 - WireGuard role syntax/runtime validation, firewall/security-group changes and pilot handshakes.
 - Central authenticated TLS ingress and Prometheus remote-write receiver enablement.
 - Host-specific Compose adoption for existing Alloy containers; config/secret/CA/host metric mounts.
@@ -30,7 +33,7 @@
 
 ## Safety and capacity
 
-Repository work has not created AWS resources, associated the Elastic IP, installed packages, generated production keys, changed security groups/firewalls, contacted or modified production servers, or restarted any containers.
+Repository work has not created AWS resources, associated the Elastic IP, installed packages, generated production keys/certificates on a host, changed security groups/firewalls, contacted or modified production servers, or restarted any containers. The new Ansible workflow is code only and has not been executed.
 
 The central 2 vCPU / 2 GB RAM / 14 GB disk host remains a constrained pilot target. Compose limits are provisional. Prometheus's 3 GB cap and Loki's 20-day retention do not guarantee requested retention; measure ingestion and disk growth. Loki filesystem storage is single-node.
 
