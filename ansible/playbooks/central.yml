@@ -36,6 +36,14 @@
           - obstack_grafana_admin_user | default('') | length > 0
           - obstack_grafana_admin_password | default('') | length >= 24
         fail_msg: "Set obstack_grafana_admin_user and a 24+ character obstack_grafana_admin_password in Ansible Vault."
+    - name: Require vaulted per-host telemetry credentials for the enrolled fleet
+      ansible.builtin.assert:
+        that:
+          - hostvars[item].obstack_alloy_metrics_password | default('') | length >= 24
+          - hostvars[item].obstack_alloy_logs_password | default('') | length >= 24
+        fail_msg: "Set unique 24+ character metrics and logs passwords for every enrolled host in Ansible Vault."
+      loop: "{{ groups['monitored'] | default([]) }}"
+      no_log: true
   roles:
     - central_base
     - docker
