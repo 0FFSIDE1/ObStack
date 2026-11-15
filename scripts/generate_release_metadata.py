@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-VERSION_RE = re.compile(r"^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$")
+VERSION_RE = re.compile(r"^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 CATEGORY_LABELS = {
     "release:added": "Added",
     "release:changed": "Changed",
@@ -22,7 +22,7 @@ CATEGORY_LABELS = {
     "release:security": "Security",
 }
 CATEGORIES = ("Added", "Changed", "Deprecated", "Removed", "Fixed", "Security")
-CONVENTIONAL = re.compile(r"^(feat|fix|security|refactor|perf|docs|chore|ci|test|build)(?:\\([^)]*\\))?!?:\\s*(.+)$", re.IGNORECASE)
+CONVENTIONAL = re.compile(r"^(feat|fix|security|refactor|perf|docs|chore|ci|test|build)(?:\([^)]*\))?!?:\s*(.+)$", re.IGNORECASE)
 
 
 def run(command: list[str]) -> str:
@@ -91,7 +91,7 @@ def build_metadata(version: str, prs: list[dict], included_commits: set[str], re
         category = classify(pr)
         if category == "None":
             continue
-        title = re.sub(r"\\s+", " ", str(pr.get("title", "")).strip())
+        title = re.sub(r"\s+", " ", str(pr.get("title", "")).strip())
         if not title:
             raise ValueError(f"PR #{pr.get('number')} has an empty title.")
         url = str(pr.get("url", "")).strip()
@@ -99,17 +99,17 @@ def build_metadata(version: str, prs: list[dict], included_commits: set[str], re
         entries[category].append(f"- {title} ({reference})")
 
     sections = [
-        f"### {category}\\n" + "\\n".join(entries[category])
+        f"### {category}\n" + "\n".join(entries[category])
         for category in CATEGORIES if entries[category]
     ]
     if not sections:
         raise ValueError("No user-facing merged pull requests were found since the previous release tag.")
 
     return (
-        f"# Pending release metadata: {version}\\n"
-        f"Release date: {release_date}\\n\\n"
-        + "\\n\\n".join(sections)
-        + "\\n"
+        f"# Pending release metadata: {version}\n"
+        f"Release date: {release_date}\n\n"
+        + "\n\n".join(sections)
+        + "\n"
     )
 
 

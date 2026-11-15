@@ -69,9 +69,6 @@ class ReleaseChangelogTests(unittest.TestCase):
             promote_changelog(promoted, "v1.2.3", notes)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 from scripts.generate_release_metadata import build_metadata, classify
 
 
@@ -132,3 +129,7 @@ class GenerateReleaseMetadataTests(unittest.TestCase):
     def test_rejects_empty_release_window(self):
         with self.assertRaisesRegex(ValueError, "No user-facing merged pull requests"):
             build_metadata("v1.2.3", [], set(), "2026-11-15")
+
+
+if __name__ == "__main__":
+    unittest.main()
