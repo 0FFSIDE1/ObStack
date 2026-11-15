@@ -69,13 +69,13 @@
   loop: "{{ groups['monitored'] | default([]) }}"
   no_log: true
 
-- name: Create deployment subdirectories
+- name: Create readable non-secret service configuration directories
   ansible.builtin.file:
     path: "{{ obstack_install_dir }}/{{ item }}"
     state: directory
     owner: root
     group: root
-    mode: "0750"
+    mode: "0755"
   loop:
     - prometheus
     - prometheus/rules
@@ -100,8 +100,8 @@
     dest: "{{ obstack_install_dir }}/{{ item }}/"
     owner: root
     group: root
-    mode: "0640"
-    directory_mode: "0750"
+    mode: "0644"
+    directory_mode: "0755"
   loop:
     - prometheus
     - loki
