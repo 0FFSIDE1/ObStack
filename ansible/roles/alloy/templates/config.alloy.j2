@@ -1,4 +1,4 @@
-// ObStack managed Alloy configuration. Secrets are read from container environment.
+// ObStack managed Alloy configuration. Passwords are mounted as files, not embedded.
 logging {
   level = "info"
   format = "logfmt"
@@ -17,8 +17,8 @@ prometheus.remote_write "obstack" {
   endpoint {
     url = "{{ obstack_alloy_remote_write_url }}"
     basic_auth {
-      username = sys.env("OBSTACK_METRICS_USERNAME")
-      password = sys.env("OBSTACK_METRICS_PASSWORD")
+      username = "{{ obstack_alloy_metrics_username }}"
+      password_file = "/run/secrets/metrics_password"
     }
     tls_config {
       ca_file = "{{ obstack_alloy_ca_file }}"
@@ -37,8 +37,8 @@ loki.write "obstack" {
     url = "{{ obstack_alloy_loki_url }}"
     tenant_id = "{{ obstack_alloy_tenant_id }}"
     basic_auth {
-      username = sys.env("OBSTACK_LOGS_USERNAME")
-      password = sys.env("OBSTACK_LOGS_PASSWORD")
+      username = "{{ obstack_alloy_logs_username }}"
+      password_file = "/run/secrets/logs_password"
     }
     tls_config {
       ca_file = "{{ obstack_alloy_ca_file }}"
