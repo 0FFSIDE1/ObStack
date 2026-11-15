@@ -1,0 +1,182 @@
+---
+# Read-only collection only. This playbook does not configure AWS, hosts, Docker, or WireGuard.
+- name: Collect local network facts from ObStack fleet
+  hosts: wireguard
+  gather_facts: false
+  vars:
+    obstack_cidr_discovery_dir: "{{ playbook_dir }}/../tmp/network-discovery"
+  pre_tasks:
+    - name: Create controller discovery directory before remote records are written
+      ansible.builtin.file:
+        path: "{{ obstack_cidr_discovery_dir }}"
+        state: directory
+        mode: "0700"
+      delegate_to: localhost
+      become: false
+      run_once: true
+  tasks:
+    - name: Collect IPv4 routes, including routed destination prefixes
+      ansible.builtin.command: ip -4 route show table all
+      changed_when: false
+      register: obstack_cidr_routes
+
+    - name: Collect IPv4 interface addresses and host interface CIDRs
+      ansible.builtin.command: ip -o -4 addr show
+      changed_when: false
+      register: obstack_cidr_addresses
+
+    - name: Check whether Docker is installed
+      ansible.builtin.command: docker --version
+      changed_when: false
+      failed_when: false
+      register: obstack_docker_binary
+
+    - name: Collect Docker network subnets when Docker is installed
+      ansible.builtin.shell: |
+        set -o pipefail
+        docker network ls -q | xargs -r docker network inspect
+      args:
+        executable: /bin/bash
+      changed_when: false
+      when: obstack_docker_binary.rc == 0
+      register: obstack_cidr_docker
+
+    - name: Require Docker discovery to succeed when Docker is installed
+      ansible.builtin.assert:
+        that:
+          - obstack_cidr_docker.rc | default(0) == 0
+        fail_msg: "Docker exists on {{ inventory_hostname }} but its network inspection failed; refusing to treat this host as fully scanned."
+      when: obstack_docker_binary.rc == 0
+
+    - name: Mark Docker as absent when the binary is not installed
+      ansible.builtin.set_fact:
+        obstack_docker_network_json: "[]"
+        obstack_docker_present: false
+      when: obstack_docker_binary.rc != 0
+
+    - name: Mark Docker discovery as complete when inspection succeeds
+      ansible.builtin.set_fact:
+        obstack_docker_network_json: "{{ obstack_cidr_docker.stdout | default('[]') }}"
+        obstack_docker_present: true
+      when: obstack_docker_binary.rc == 0
+
+    - name: Write host discovery record to controller
+      ansible.builtin.copy:
+        dest: "{{ obstack_cidr_discovery_dir }}/{{ inventory_hostname }}.json"
+        mode: "0600"
+        content: "{{ {'host': inventory_hostname, 'routes': obstack_cidr_routes.stdout, 'addresses': obstack_cidr_addresses.stdout, 'docker_networks': obstack_docker_network_json, 'docker_present': obstack_docker_present} | to_nice_json }}\n"
+      delegate_to: localhost
+      become: false
+
+- name: Query AWS read-only and normalize overlap inputs
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    obstack_cidr_discovery_dir: "{{ playbook_dir }}/../tmp/network-discovery"
+    obstack_cidr_output: "{{ playbook_dir }}/../tmp/cidr-overlap-input.json"
+  tasks:
+    - name: Require all ten remote servers in the monitored inventory group
+      ansible.builtin.assert:
+        that:
+          - groups['monitored'] is defined
+          - groups['monitored'] | length == 10
+          - groups['wireguard'] | length >= 11
+        fail_msg: "Inventory must include exactly 10 remote hosts in [monitored] and the central host in [wireguard] before discovery can pass."
+
+    - name: Require explicit AWS region, approved VPC CIDR and candidate list
+      ansible.builtin.assert:
+        that:
+          - obstack_aws_region is defined
+          - obstack_approved_vpc_cidr is defined
+          - obstack_candidate_overlay_cidrs is defined
+          - obstack_candidate_overlay_cidrs | length > 0
+        fail_msg: "Supply obstack_aws_region, obstack_approved_vpc_cidr and obstack_candidate_overlay_cidrs. Home/office VPN CIDRs are supplied with obstack_home_office_vpn_cidrs."
+
+    - name: Create controller discovery directory
+      ansible.builtin.file:
+        path: "{{ obstack_cidr_discovery_dir }}"
+        state: directory
+        mode: "0700"
+
+    - name: Query AWS VPCs (read-only)
+      ansible.builtin.command:
+        argv:
+          - aws
+          - ec2
+          - describe-vpcs
+          - --region
+          - "{{ obstack_aws_region }}"
+          - --output
+          - json
+      changed_when: false
+      register: obstack_aws_vpcs
+
+    - name: Save AWS VPC discovery data
+      ansible.builtin.copy:
+        dest: "{{ obstack_cidr_discovery_dir }}/aws-vpcs.json"
+        mode: "0600"
+        content: "{{ obstack_aws_vpcs.stdout }}\n"
+
+    - name: Query AWS subnets (read-only)
+      ansible.builtin.command:
+        argv:
+          - aws
+          - ec2
+          - describe-subnets
+          - --region
+          - "{{ obstack_aws_region }}"
+          - --output
+          - json
+      changed_when: false
+      register: obstack_aws_subnets
+
+    - name: Save AWS subnet discovery data
+      ansible.builtin.copy:
+        dest: "{{ obstack_cidr_discovery_dir }}/aws-subnets.json"
+        mode: "0600"
+        content: "{{ obstack_aws_subnets.stdout }}\n"
+
+    - name: Normalize discovered records and supplied CIDR candidates
+      ansible.builtin.command:
+        argv: >-
+          {{
+            [
+              'python3',
+              playbook_dir ~ '/../scripts/normalize_cidr_discovery.py',
+              '--vpcs', obstack_cidr_discovery_dir ~ '/aws-vpcs.json',
+              '--subnets', obstack_cidr_discovery_dir ~ '/aws-subnets.json',
+              '--hosts-dir', obstack_cidr_discovery_dir,
+              '--approved-vpc-cidr', obstack_approved_vpc_cidr,
+              '--output', obstack_cidr_output
+            ]
+            + (obstack_home_office_vpn_cidrs | default([]) | map('regex_replace', '^', '--vpn-cidr=') | list)
+            + (obstack_candidate_overlay_cidrs | map('regex_replace', '^', '--candidate=') | list)
+          }}
+      changed_when: true
+
+    - name: Check overlaps (read-only; rc 2 means conflicts or no safe candidate)
+      ansible.builtin.command:
+        argv:
+          - python3
+          - "{{ playbook_dir }}/../scripts/check_cidr_overlaps.py"
+          - "{{ obstack_cidr_output }}"
+      changed_when: false
+      register: obstack_cidr_report
+      failed_when: false
+
+    - name: Print overlap report before applying the validation gate
+      ansible.builtin.debug:
+        msg: "{{ obstack_cidr_report.stdout_lines }}"
+
+    - name: Require a conflict-free discovery result and at least one clean candidate
+      ansible.builtin.assert:
+        that:
+          - obstack_cidr_report.rc == 0
+        fail_msg: >-
+          CIDR preflight FAILED (checker exit {{ obstack_cidr_report.rc }}).
+          Review the report above. Do not approve or deploy a WireGuard overlay
+          until all discovered overlaps are resolved and a candidate passes.
+        success_msg: >-
+          CIDR preflight passed for the supplied discovery inputs. This is not
+          operator approval; review the report before selecting an overlay.

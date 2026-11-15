@@ -3,7 +3,7 @@ name: Ansible validation
 on:
   workflow_call:
   push:
-    branches: ["**"]
+    branches: [main, release]
     paths:
       - "ansible/**"
       - ".ansible-lint"
@@ -15,9 +15,12 @@ on:
       - "prometheus/**"
       - "nginx/**"
       - ".github/workflows/ansible-validation.yml"
+      - ".github/workflows/wireguard-preflight-approval.yml"
+      - ".github/workflows/release.yml"
   pull_request:
     paths:
       - "ansible/**"
+      - ".ansible-lint"
       - "compose.yaml"
       - "alertmanager/**"
       - "blackbox/**"
@@ -26,6 +29,7 @@ on:
       - "prometheus/**"
       - "nginx/**"
       - ".github/workflows/ansible-validation.yml"
+      - ".github/workflows/wireguard-preflight-approval.yml"
   workflow_dispatch:
 
 permissions:

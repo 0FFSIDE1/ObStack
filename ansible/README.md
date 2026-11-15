@@ -86,3 +86,17 @@ After the hub is active, CA is distributed and Nginx is bound to the WireGuard I
     ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/validate-central.yml
 
 This read-only validation checks Compose rendering, services, readiness, Prometheus remote-write receiver, TLS trust and authentication behavior. Secret-bearing tasks retain no_log=true.
+
+
+## Automated CIDR overlap discovery (read-only)
+
+See [the CIDR preflight guide](../docs/network-cidr-overlap-preflight.md). The playbook queries AWS VPC/subnet CIDRs with the AWS CLI and collects IPv4 routes and Docker IPAM ranges from hosts in the inventory `wireguard` group. AWS CLI credentials must be available on the Ansible controller with read-only `ec2:DescribeVpcs` and `ec2:DescribeSubnets` access. Home/office VPN CIDRs are explicit operator inputs, not inferred.
+
+Example (replace every placeholder with approved/verified values):
+
+```bash
+ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/cidr-overlap-discovery.yml \\
+  -e '{"obstack_aws_region":"YOUR_AWS_REGION","obstack_approved_vpc_cidr":"YOUR_APPROVED_VPC_CIDR","obstack_home_office_vpn_cidrs":["YOUR_HOME_VPN_CIDR","YOUR_OFFICE_VPN_CIDR"],"obstack_candidate_overlay_cidrs":["10.77.0.0/24","10.240.0.0/24","172.30.240.0/24","192.168.240.0/24"]}'
+```
+
+Discovery creates private temporary network records under `ansible/tmp/network-discovery`; remove these after use. It is read-only and does not deploy WireGuard. The candidate must be approved by the network owner before any inventory edit or mutating playbook execution.

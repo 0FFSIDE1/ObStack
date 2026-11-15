@@ -2,16 +2,8 @@ name: Release and deploy ObStack
 
 on:
   push:
-    branches-ignore:
-      - "**"
     tags:
       - "v[0-9]*.[0-9]*.[0-9]*"
-  workflow_dispatch:
-    inputs:
-      release_tag:
-        description: "Existing version tag to release (e.g. v1.0.0)"
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -21,20 +13,54 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  verify-release-branch:
+    name: Verify tag is exactly the release branch HEAD
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out tag and full Git history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Require a semantic version tag on release branch HEAD
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          TAGGED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Release tag must use vMAJOR.MINOR.PATCH (for example v1.2.3)"
+            exit 1
+          fi
+          git fetch --no-tags origin refs/heads/release:refs/remotes/origin/release
+          RELEASE_HEAD="$(git rev-parse refs/remotes/origin/release)"
+          if [[ "$TAGGED_SHA" != "$RELEASE_HEAD" ]]; then
+            echo "::error::Refusing deployment: tag $RELEASE_TAG points to $TAGGED_SHA, but origin/release is at $RELEASE_HEAD."
+            echo "::error::Create the version tag on the exact reviewed release branch HEAD."
+            exit 1
+          fi
+          echo "Verified $RELEASE_TAG points to release branch HEAD $RELEASE_HEAD."
+
   config-validation:
     name: Configuration validation (required)
+    needs: verify-release-branch
     uses: ./.github/workflows/validate.yml
 
   ansible-validation:
     name: Ansible syntax and lint validation (required)
+    needs: verify-release-branch
     uses: ./.github/workflows/ansible-validation.yml
 
   deploy-central:
     name: Deploy central host
     needs:
+      - verify-release-branch
       - config-validation
       - ansible-validation
-    if: ${{ needs.config-validation.result == 'success' && needs.ansible-validation.result == 'success' }}
+    if: ${{ needs.verify-release-branch.result == 'success' && needs.config-validation.result == 'success' && needs.ansible-validation.result == 'success' }}
     runs-on: ubuntu-latest
     environment: production
     permissions:
@@ -46,21 +72,10 @@ jobs:
       OBSTACK_GRAFANA_ADMIN_PASSWORD: ${{ secrets.OBSTACK_GRAFANA_ADMIN_PASSWORD }}
       OBSTACK_ANSIBLE_VAULT_PASSWORD_FILE: ${{ runner.temp }}/obstack-vault-password
     steps:
-      - name: Validate release tag
-        shell: bash
-        env:
-          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
-        run: |
-          set -euo pipefail
-          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::Release tag must use vMAJOR.MINOR.PATCH (for example v1.2.3)"
-            exit 1
-          fi
-
-      - name: Check out tagged release
+      - name: Check out verified tagged release
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
 
       - name: Require deployment credentials and inventory
@@ -92,8 +107,6 @@ jobs:
           ansible-galaxy collection install -r ansible/requirements.yml
 
       - name: Deploy central stack
-        env:
-          OBSTACK_DEPLOY_SSH_PRIVATE_KEY_PATH: ${{ runner.temp }}/../.ssh/obstack_deploy
         run: |
           set -euo pipefail
           ansible-playbook -i "$RUNNER_TEMP/production-inventory.yml" ansible/playbooks/central.yml \
