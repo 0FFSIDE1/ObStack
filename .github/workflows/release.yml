@@ -163,7 +163,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.ref_name }}
           NOTES_FILE: ${{ runner.temp }}/release-notes.md
-        run: gh release create "$RELEASE_TAG" --verify-tag --title "ObStack $RELEASE_TAG" --notes-file "$NOTES_FILE"
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG" --title "ObStack $RELEASE_TAG" --notes-file "$NOTES_FILE"
+          else
+            gh release create "$RELEASE_TAG" --verify-tag --title "ObStack $RELEASE_TAG" --notes-file "$NOTES_FILE"
+          fi
 
   propose-changelog-promotion:
     name: Open changelog promotion PR after successful release
@@ -186,16 +192,30 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Create changelog promotion branch and commit
         env:
+          GH_TOKEN: ${{ secrets.OBSTACK_RELEASE_AUTOMATION_TOKEN }}
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
           PROMOTION_BRANCH="automation/changelog-promotion-$RELEASE_TAG"
+          EXISTING_PR="$(gh pr list --head "$PROMOTION_BRANCH" --base release --json number --jq 'length')"
+          if [[ "$EXISTING_PR" -gt 0 ]]; then
+            echo "A changelog promotion PR already exists for $RELEASE_TAG; no new branch commit is needed."
+            exit 0
+          fi
+          if git ls-remote --exit-code --heads origin "$PROMOTION_BRANCH" >/dev/null 2>&1; then
+            git fetch origin "$PROMOTION_BRANCH"
+            git switch -c "$PROMOTION_BRANCH" --track "origin/$PROMOTION_BRANCH"
+            grep -Fq "## [$RELEASE_TAG]" CHANGELOG.md
+            test ! -e "release-notes/$RELEASE_TAG.md"
+            echo "Reusing existing complete changelog promotion branch."
+            exit 0
+          fi
           git switch -c "$PROMOTION_BRANCH"
           python scripts/release_changelog.py "$RELEASE_TAG" --promote-changelog CHANGELOG.md
           rm "release-notes/$RELEASE_TAG.md"
           git add CHANGELOG.md "release-notes/$RELEASE_TAG.md"
           git commit -m "docs(changelog): publish $RELEASE_TAG after deployment"
-          git push --force-with-lease origin "$PROMOTION_BRANCH"
+          git push origin "$PROMOTION_BRANCH"
       - name: Open changelog promotion PR
         env:
           GH_TOKEN: ${{ secrets.OBSTACK_RELEASE_AUTOMATION_TOKEN }}
