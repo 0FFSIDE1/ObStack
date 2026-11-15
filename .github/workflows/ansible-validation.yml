@@ -1,6 +1,7 @@
 name: Ansible validation
 
 on:
+  workflow_call:
   push:
     branches: ["**"]
     paths:
