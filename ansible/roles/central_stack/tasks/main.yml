@@ -1,0 +1,88 @@
+---
+- name: Create deployment subdirectories
+  ansible.builtin.file:
+    path: "{{ obstack_install_dir }}/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+  loop:
+    - prometheus
+    - prometheus/rules
+    - loki
+    - grafana
+    - grafana/provisioning
+    - alertmanager
+    - blackbox
+
+- name: Copy central Compose manifest from the checked-out repository
+  ansible.builtin.copy:
+    src: "{{ obstack_repo_root }}/compose.yaml"
+    dest: "{{ obstack_install_dir }}/compose.yaml"
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Copy service configuration directories
+  ansible.builtin.copy:
+    src: "{{ obstack_repo_root }}/{{ item }}/"
+    dest: "{{ obstack_install_dir }}/{{ item }}/"
+    owner: root
+    group: root
+    mode: "0640"
+    directory_mode: "0750"
+  loop:
+    - prometheus
+    - loki
+    - grafana
+    - alertmanager
+    - blackbox
+
+- name: Install Grafana environment file
+  ansible.builtin.copy:
+    dest: "{{ obstack_install_dir }}/.env"
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      GRAFANA_ADMIN_USER={{ obstack_grafana_admin_user }}
+      GRAFANA_ADMIN_PASSWORD={{ obstack_grafana_admin_password }}
+  no_log: true
+
+- name: Validate rendered Compose configuration
+  ansible.builtin.command: docker compose config --quiet
+  args:
+    chdir: "{{ obstack_install_dir }}"
+  changed_when: false
+
+- name: Pull pinned service images
+  ansible.builtin.command: docker compose pull
+  args:
+    chdir: "{{ obstack_install_dir }}"
+  register: obstack_pull
+  changed_when: "'Downloaded newer image' in obstack_pull.stdout or 'Pull complete' in obstack_pull.stdout"
+
+- name: Deploy and start ObStack services
+  ansible.builtin.command: docker compose up -d --remove-orphans
+  args:
+    chdir: "{{ obstack_install_dir }}"
+  register: obstack_up
+  changed_when: "'Started' in obstack_up.stdout or 'Created' in obstack_up.stdout or 'Recreated' in obstack_up.stdout"
+
+- name: Wait for Prometheus readiness
+  ansible.builtin.uri:
+    url: http://127.0.0.1:9090/-/ready
+    status_code: 200
+  register: prometheus_ready
+  retries: 12
+  delay: 5
+  until: prometheus_ready.status == 200
+
+- name: Wait for Grafana health
+  ansible.builtin.uri:
+    url: http://127.0.0.1:3000/api/health
+    status_code: 200
+  register: grafana_ready
+  retries: 12
+  delay: 5
+  until: grafana_ready.status == 200
