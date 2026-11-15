@@ -15,26 +15,56 @@
       become: false
       run_once: true
   tasks:
-    - name: Collect IPv4 routes
+    - name: Collect IPv4 routes, including routed destination prefixes
       ansible.builtin.command: ip -4 route show table all
       changed_when: false
       register: obstack_cidr_routes
 
-    - name: Collect Docker network subnets (Docker may be absent on a host)
+    - name: Collect IPv4 interface addresses and host interface CIDRs
+      ansible.builtin.command: ip -o -4 addr show
+      changed_when: false
+      register: obstack_cidr_addresses
+
+    - name: Check whether Docker is installed
+      ansible.builtin.command: command -v docker
+      changed_when: false
+      failed_when: false
+      register: obstack_docker_binary
+
+    - name: Collect Docker network subnets when Docker is installed
       ansible.builtin.shell: |
         set -o pipefail
         docker network ls -q | xargs -r docker network inspect
       args:
         executable: /bin/bash
       changed_when: false
-      failed_when: false
+      when: obstack_docker_binary.rc == 0
       register: obstack_cidr_docker
+
+    - name: Require Docker discovery to succeed when Docker is installed
+      ansible.builtin.assert:
+        that:
+          - obstack_cidr_docker.rc | default(0) == 0
+        fail_msg: "Docker exists on {{ inventory_hostname }} but its network inspection failed; refusing to treat this host as fully scanned."
+      when: obstack_docker_binary.rc == 0
+
+    - name: Mark Docker as absent when the binary is not installed
+      ansible.builtin.set_fact:
+        obstack_docker_network_json: "[]"
+        obstack_docker_present: false
+      when: obstack_docker_binary.rc != 0
+
+    - name: Mark Docker discovery as complete when inspection succeeds
+      ansible.builtin.set_fact:
+        obstack_docker_network_json: "{{ obstack_cidr_docker.stdout | default('[]') }}"
+        obstack_docker_present: true
+      when: obstack_docker_binary.rc == 0
 
     - name: Write host discovery record to controller
       ansible.builtin.copy:
         dest: "{{ obstack_cidr_discovery_dir }}/{{ inventory_hostname }}.json"
         mode: "0600"
-        content: "{{ {'host': inventory_hostname, 'routes': obstack_cidr_routes.stdout, 'docker_networks': obstack_cidr_docker.stdout | default('[]')} | to_nice_json }}\n"
+        content: "{{ {'host': inventory_hostname, 'routes': obstack_cidr_routes.stdout, 'addresses': obstack_cidr_addresses.stdout, 'docker_networks': obstack_docker_network_json, 'docker_present': obstack_docker_present} | to_nice_json }}\n"
       delegate_to: localhost
       become: false
 
@@ -46,6 +76,14 @@
     obstack_cidr_discovery_dir: "{{ playbook_dir }}/../tmp/network-discovery"
     obstack_cidr_output: "{{ playbook_dir }}/../tmp/cidr-overlap-input.json"
   tasks:
+    - name: Require all ten remote servers in the monitored inventory group
+      ansible.builtin.assert:
+        that:
+          - groups['monitored'] is defined
+          - groups['monitored'] | length == 10
+          - groups['wireguard'] | length >= 11
+        fail_msg: "Inventory must include exactly 10 remote hosts in [monitored] and the central host in [wireguard] before discovery can pass."
+
     - name: Require explicit AWS region, approved VPC CIDR and candidate list
       ansible.builtin.assert:
         that:
