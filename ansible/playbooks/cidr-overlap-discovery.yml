@@ -26,7 +26,7 @@
       register: obstack_cidr_addresses
 
     - name: Check whether Docker is installed
-      ansible.builtin.command: command -v docker
+      ansible.builtin.shell: command -v docker
       changed_when: false
       failed_when: false
       register: obstack_docker_binary
