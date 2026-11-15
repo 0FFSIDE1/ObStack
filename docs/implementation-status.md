@@ -23,6 +23,8 @@
 - Read-only central validation playbook for Compose services, readiness endpoints, Prometheus receiver flag, TLS trust and authenticated/unauthenticated ingress behavior.
 - Alloy onboarding role with preserve-by-default policy, HTTPS/TLS verification and password-file support. It stages config/secrets only and does not restart or replace existing containers.
 - GitHub Actions validation for Ansible syntax/lint, Compose rendering, Nginx syntax, Prometheus config/rules, Alertmanager config, Loki config, Blackbox Exporter config, Grafana provisioning YAML and dashboard JSON.
+- Initial design-level threat model and preliminary scoped ISO/IEC 27002:2022 control/evidence mapping (explicitly Partial/Pending, not a compliance assertion).
+- Operations guide documenting network diagram, ingress/host-local port inventory, Compose resource-ceiling sum and failure-mode responses.
 
 ## Not yet implemented or validated
 
