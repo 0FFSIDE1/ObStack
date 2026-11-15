@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Run release changelog unit tests
+        run: python -m unittest discover -s tests -p 'test_*.py'
       - name: Install Docker Compose plugin
         run: |
           docker compose version

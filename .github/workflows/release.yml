@@ -44,6 +44,20 @@ jobs:
           fi
           echo "Verified $RELEASE_TAG points to release branch HEAD $RELEASE_HEAD."
 
+  changelog-validation:
+    name: Validate version changelog entry
+    needs: verify-release-branch
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Validate and extract release notes
+        run: python scripts/release_changelog.py "${{ github.ref_name }}" --output "${{ runner.temp }}/release-notes.md"
+
   config-validation:
     name: Configuration validation (required)
     needs: verify-release-branch
@@ -58,9 +72,10 @@ jobs:
     name: Deploy central host
     needs:
       - verify-release-branch
+      - changelog-validation
       - config-validation
       - ansible-validation
-    if: ${{ needs.verify-release-branch.result == 'success' && needs.config-validation.result == 'success' && needs.ansible-validation.result == 'success' }}
+    if: ${{ needs.verify-release-branch.result == 'success' && needs.changelog-validation.result == 'success' && needs.config-validation.result == 'success' && needs.ansible-validation.result == 'success' }}
     runs-on: ubuntu-latest
     environment: production
     permissions:
@@ -70,7 +85,7 @@ jobs:
       ANSIBLE_HOST_KEY_CHECKING: "True"
       OBSTACK_GRAFANA_ADMIN_USER: ${{ secrets.OBSTACK_GRAFANA_ADMIN_USER }}
       OBSTACK_GRAFANA_ADMIN_PASSWORD: ${{ secrets.OBSTACK_GRAFANA_ADMIN_PASSWORD }}
-      OBSTACK_ANSIBLE_VAULT_PASSWORD_FILE: ${{ runner.temp }}/obstack-vault-password
+      OBSTACK_ANSIBLE_VAULT_PASSWORD_FILE: ${{ github.workspace }}/.obstack-vault-password
     steps:
       - name: Check out verified tagged release
         uses: actions/checkout@v4
@@ -113,3 +128,24 @@ jobs:
             --private-key "$HOME/.ssh/obstack_deploy" \
             -e obstack_apply=true \
             -e obstack_repo_root="$GITHUB_WORKSPACE"
+
+  publish-github-release:
+    name: Publish GitHub Release with changelog notes
+    needs: deploy-central
+    if: ${{ needs.deploy-central.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out verified tagged release
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Extract release notes
+        run: python scripts/release_changelog.py "${{ github.ref_name }}" --output "${{ runner.temp }}/release-notes.md"
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          NOTES_FILE: ${{ runner.temp }}/release-notes.md
+        run: gh release create "$RELEASE_TAG" --verify-tag --title "ObStack $RELEASE_TAG" --notes-file "$NOTES_FILE"
