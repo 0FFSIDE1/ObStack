@@ -74,11 +74,13 @@
     proto: tcp
     from_ip: "{{ obstack_ssh_allowed_cidr }}"
 
-- name: Allow WireGuard hub UDP
+- name: Allow WireGuard UDP only from verified enrolled spoke egress addresses
   community.general.ufw:
     rule: allow
     port: "51820"
     proto: udp
+    from_ip: "{{ hostvars[item].obstack_wg_peer_public_ip }}"
+  loop: "{{ groups['monitored'] | default([]) }}"
 
 - name: Allow HTTPS only on the WireGuard interface
   community.general.ufw:
