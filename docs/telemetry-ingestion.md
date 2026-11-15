@@ -21,7 +21,7 @@ The two Nginx password files are:
 - /etc/obstack/secrets/metrics.htpasswd
 - /etc/obstack/secrets/logs.htpasswd
 
-A host's Alloy container must mount its staged metrics/logs password files read-only at /run/secrets/metrics_password and /run/secrets/logs_password. This prevents credentials from being embedded in Alloy configuration or command-line arguments. Credential rotation is performed by updating Vault, rerunning the central stack role, then staging the updated password files to that host.
+A host's Alloy container must mount its staged metrics/logs password files read-only at /run/secrets/metrics_password and /run/secrets/logs_password. The host files remain root-only by default; discover the existing container UID/GID and grant read-only access using a dedicated group or equivalent least-privilege mapping before mounting. Never make password files world-readable. This prevents credentials from being embedded in Alloy configuration or command-line arguments. Credential rotation is performed by updating Vault, rerunning the central stack role, then staging the updated password files to that host.
 
 This first iteration uses one Loki tenant, obstack, for the entire ObStack installation. Basic Auth distinguishes enrolled hosts but does not create per-project Loki tenant isolation. Project/environment labels and authorization policy must be reviewed before multi-tenant or customer-isolated workloads are introduced.
 
