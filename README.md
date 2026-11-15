@@ -2,16 +2,20 @@
 
 Centralized observability for multiple projects and remote Linux servers.
 
+## Start here
+
+**New to ObStack?** Follow the [Beginner's Step-by-Step Guide](docs/beginner-guide.md) from AWS account preparation through the pilot and first telemetry. It includes the required secret checklist, commands, AWS console navigation and a screenshot capture checklist.
+
 ## Current implementation
 
-The initial repository implementation is on branch feat/phase-1-discovery-architecture.
+The repository implementation is merged into `main`.
 
 - Central Docker Compose stack: Prometheus, Loki, Grafana, Alertmanager, Blackbox Exporter and Dockerized Nginx.
 - Central images are pinned to ARM64 platform.
 - Prometheus and Loki backend ports remain bound to loopback only.
 - Prometheus remote-write receiver is enabled and exposed only through the Nginx authenticated HTTPS route /api/v1/write.
 - Loki push is exposed only through the Nginx authenticated HTTPS route /loki/api/v1/push; Nginx assigns the single-node obstack tenant.
-- Each enrolled host has separate metrics and logs Basic Auth credentials stored in Ansible Vault and bcrypt htpasswd files.
+- Each enrolled host has separate metrics and logs Basic Auth credentials; bcrypt hashes are provisioned into Nginx files from controller environment-backed secrets. Keep all real credentials in a protected secrets store and never commit them.
 - TLS is terminated by Nginx using a central certificate signed by the private ObStack CA. A gated Ansible playbook distributes only the public CA certificate to spokes.
 - Prometheus target retention is configured for 30 days with a 3 GB TSDB size cap; Loki retention is configured for 20 days.
 - Grafana datasources and a baseline central platform overview dashboard are provisioned from files.
@@ -19,9 +23,9 @@ The initial repository implementation is on branch feat/phase-1-discovery-archit
 - Alertmanager supports optional HTTPS webhook delivery using the controller environment variable `OBSTACK_ALERTMANAGER_WEBHOOK_URL`; unset means no notification delivery (sink receiver).
 - Ansible includes read-only discovery, gated central provisioning, WireGuard hub/spoke provisioning, CA distribution and read-only central validation.
 
-CI validates Ansible, Compose, Nginx, Prometheus, Alertmanager, Loki, Blackbox Exporter and Grafana provisioning/dashboard assets. A passing CI run is not yet evidence of deployed runtime behavior.
+CI validates Ansible, Compose, Nginx, Prometheus, Alertmanager, Loki, Blackbox Exporter and Grafana provisioning/dashboard assets. A passing CI run is not evidence of deployed runtime behavior.
 
-See docs/implementation-status.md, docs/architecture.md, docs/network-architecture.md, docs/telemetry-ingestion.md, docs/implementation-plan.md, docs/operations/ports-capacity-failure-modes.md, docs/security/threat-model.md and docs/security/iso-27002-2022-preliminary-mapping.md.
+See [implementation status](docs/implementation-status.md), [architecture](docs/architecture.md), [network architecture](docs/network-architecture.md), [telemetry ingestion](docs/telemetry-ingestion.md), [implementation plan](docs/implementation-plan.md), [operations guide](docs/operations/ports-capacity-failure-modes.md), [threat model](docs/security/threat-model.md) and [preliminary ISO/IEC 27002 mapping](docs/security/iso-27002-2022-preliminary-mapping.md).
 
 ## Local configuration checks
 
