@@ -52,7 +52,7 @@ class ReleaseChangelogTests(unittest.TestCase):
             pending_notes(invalid, "v1.2.3")
 
     def test_rejects_bullets_outside_categories(self):
-        invalid = PENDING.replace("### Added\\n- Add CIDR preflight reporting.", "- Add CIDR preflight reporting.")
+        invalid = PENDING.replace("### Added\n- Add CIDR preflight reporting.", "- Add CIDR preflight reporting.")
         with self.assertRaisesRegex(ValueError, "supported category"):
             pending_notes(invalid, "v1.2.3")
 

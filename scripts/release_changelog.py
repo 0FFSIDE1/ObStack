@@ -31,19 +31,31 @@ def pending_notes(metadata: str, version: str) -> tuple[str, str]:
         raise ValueError(f"Invalid release date for {version}.") from error
 
     body = "\n".join(lines[2:]).strip()
-    bullets = [
-        match.group(1).strip()
-        for line in lines[2:]
-        if (match := re.match(r"^\s*-\s+(.+)$", line))
-    ]
+    current_category = None
+    categories_seen = set()
+    bullets = []
+    for line in lines[2:]:
+        heading = re.match(r"^###\s+(.+?)\s*$", line)
+        if heading:
+            current_category = heading.group(1)
+            if current_category not in CATEGORIES:
+                allowed = ", ".join(sorted(CATEGORIES))
+                raise ValueError(f"Unsupported changelog category {current_category!r}; use: {allowed}.")
+            categories_seen.add(current_category)
+            continue
+        bullet = re.match(r"^\s*-\s+(.+)$", line)
+        if bullet and current_category in CATEGORIES:
+            bullets.append(bullet.group(1).strip())
     meaningful = [
         item for item in bullets
         if item.lower() not in PLACEHOLDERS
         and "add changelog entries here" not in item.lower()
         and item != "..."
     ]
+    if not categories_seen:
+        raise ValueError(f"Pending notes for {version} must use at least one supported Keep a Changelog category.")
     if not meaningful:
-        raise ValueError(f"Pending notes for {version} must contain at least one meaningful bullet.")
+        raise ValueError(f"Pending notes for {version} must contain at least one meaningful bullet under a supported category.")
     notes = f"## [{version}] - {release_date}\n\n{body}\n"
     return release_date, notes
 
