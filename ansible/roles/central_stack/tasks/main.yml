@@ -110,7 +110,15 @@
     - grafana
     - alertmanager
     - blackbox
-    - nginx
+
+- name: Copy Nginx configuration readable by its dedicated unprivileged group
+  ansible.builtin.copy:
+    src: "{{ obstack_repo_root }}/nginx/"
+    dest: "{{ obstack_install_dir }}/nginx/"
+    owner: root
+    group: obstack-nginx
+    mode: "0640"
+    directory_mode: "0750"
 
 - name: Install Grafana environment file
   ansible.builtin.copy:
