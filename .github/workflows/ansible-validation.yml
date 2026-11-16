@@ -13,6 +13,8 @@ on:
       - "grafana/**"
       - "loki/**"
       - "prometheus/**"
+      - "applications/**"
+      - "scripts/validate_applications.py"
       - "nginx/**"
       - ".github/workflows/ansible-validation.yml"
       - ".github/workflows/wireguard-preflight-approval.yml"

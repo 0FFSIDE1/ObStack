@@ -1,0 +1,36 @@
+---
+schema_version: 1
+application: ensams
+environment: null  # Operator: use the protected APP_ENV value.
+inventory_host: null  # Operator: exact key from ansible/inventory/hosts.yml.
+enabled: false
+metrics:
+  enabled: true
+  target_address: null  # Verified WireGuard address and reserved host port.
+  path: /metrics
+  interval: 30s
+  timeout: 10s
+  access: private_wireguard
+health:
+  enabled: true
+  url: null  # Verified probe URL and approved TLS policy.
+  meaning: liveness
+logs:
+  enabled: true
+  method: alloy_docker_agent
+  labels:
+    service: ensams
+    environment: null
+    host: null
+host_monitoring:
+  enabled: true
+  method: alloy_remote_write
+blackbox:
+  enabled: true
+dashboards:
+  source_files:
+    - iac/docker/ensams-prod/infra/grafana/dashboards/ensams-services.json
+    - iac/docker/ensams-prod/infra/grafana/dashboards/ensams-application-logs.json
+alerts:
+  source_file: iac/docker/ensams-prod/infra/prometheus/alert.rules.yml
+migration_stage: discovery
