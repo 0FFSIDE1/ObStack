@@ -8,7 +8,7 @@ Application endpoints are a separate path: central Prometheus scrapes an applica
 
 ## Logs and host/container monitoring
 
-The repository's Alloy onboarding role currently stages a starter configuration and preserves existing deployments by default. It does not install or restart Alloy. Its template has host metric collection and a Loki writer but no log source, so central log receipt is not established by that role alone.
+The repository's Alloy onboarding role currently stages a starter configuration and preserves existing deployments by default. It does not install or restart Alloy. CI renders and syntax-validates this starter config with a pinned Alloy CLI. Its template has host metric collection and a Loki writer but no log source, so central log receipt is not established by that role alone.
 
 For Docker JSON logs, a centrally managed Alloy agent on each remote host is the candidate design because collection stays local and forwarding reuses the existing authenticated TLS Loki path. However, reading the Docker socket/API is effectively root-equivalent even when mounted read-only: Docker API operations can create privileged containers. Do not enable this path until the maintainer approves the privilege model. A less-privileged alternative is to forward selected application logs to a protected host file/journald stream and grant the agent read-only access only to that path; this requires application/host changes and should be chosen where feasible. Never expose the socket over TCP or mount it into central Alloy.
 

@@ -16,7 +16,7 @@ Audit date: 2026-11-16. This audit is based on the ObStack repository and the su
 | Dashboards | `grafana/provisioning/dashboards/obstack/central-overview.json` and provider config | IMPLEMENTED BUT INCOMPLETE | Central platform dashboard exists. Supplied ENSAMS dashboard source files are not in this repository, so import/query compatibility is unverified. |
 | Retention/capacity | `compose.yaml`, `loki/config.yml`, `docs/operations/ports-capacity-failure-modes.md` | IMPLEMENTED BUT INCOMPLETE | Configured 30-day metrics and 20-day logs do not establish safe retention on the constrained host; measured ingestion is still needed. |
 | Network enrollment | `ansible/roles/wireguard/`, `ansible/playbooks/cidr-overlap-discovery.yml`, `docs/network-architecture.md` | IMPLEMENTED BUT INCOMPLETE | Overlay and peer values remain provisional or absent for ENSAMS. No address or CIDR is assumed by this integration. |
-| CI validation | `.github/workflows/validate.yml`, `.github/workflows/ansible-validation.yml` | IMPLEMENTED BUT INCOMPLETE | Existing config checks now include application registration validation and generated-target drift. Alloy config validation is not present. |
+| CI validation | `.github/workflows/validate.yml`, `.github/workflows/ansible-validation.yml` | IMPLEMENTED BUT INCOMPLETE | Config checks include application registration validation, generated-target drift, and pinned Alloy CLI validation of a rendered starter config. This does not establish a running or connected agent. |
 | Tracing | No tracing backend or instrumentation configuration found in the relevant files. | MISSING / REQUIRES HUMAN DECISION | No tracing added because no backend is approved. |
 
 ## ENSAMS gap matrix

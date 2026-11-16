@@ -24,7 +24,7 @@ The repository implementation is merged into `main`.
 - Alertmanager supports optional HTTPS webhook delivery using the controller environment variable `OBSTACK_ALERTMANAGER_WEBHOOK_URL`; unset means no notification delivery (sink receiver).
 - Ansible includes read-only discovery, gated central provisioning, WireGuard hub/spoke provisioning, CA distribution and read-only central validation.
 
-CI validates Ansible, Compose, Nginx, Prometheus, Alertmanager, Loki, Blackbox Exporter and Grafana provisioning/dashboard assets. A passing CI run is not evidence of deployed runtime behavior.
+CI validates Ansible, Alloy configuration, Compose, Nginx, Prometheus, Alertmanager, Loki, Blackbox Exporter and Grafana provisioning/dashboard assets. A passing CI run is not evidence of deployed runtime behavior.
 
 See [implementation status](docs/implementation-status.md), [architecture](docs/architecture.md), [network architecture](docs/network-architecture.md), [telemetry ingestion](docs/telemetry-ingestion.md), [implementation plan](docs/implementation-plan.md), [operations guide](docs/operations/ports-capacity-failure-modes.md), [threat model](docs/security/threat-model.md) and [preliminary ISO/IEC 27002 mapping](docs/security/iso-27002-2022-preliminary-mapping.md).
 
