@@ -55,8 +55,12 @@ jobs:
           source = Path("ansible/roles/alloy/templates/config.alloy.j2")
           values = {
               "inventory_hostname": "ci-host",
-              "obstack_alloy_remote_write_url": "https://obstack.invalid/api/v1/write",
-              "obstack_alloy_loki_url": "https://obstack.invalid/loki/api/v1/push",
+              "obstack_alloy_remote_write_url": (
+                  "https://obstack.invalid/api/v1/write"
+              ),
+              "obstack_alloy_loki_url": (
+                  "https://obstack.invalid/loki/api/v1/push"
+              ),
               "obstack_alloy_metrics_username": "ci-metrics",
               "obstack_alloy_logs_username": "ci-logs",
               "obstack_alloy_ca_file": "/etc/ssl/certs/obstack-ca.crt",
@@ -66,7 +70,10 @@ jobs:
               "project": "example",
               "environment": "staging",
           }
-          rendered = Environment(autoescape=False).from_string(source.read_text()).render(**values)
+          template = Environment(autoescape=False).from_string(
+              source.read_text()
+          )
+          rendered = template.render(**values)
           Path("/tmp/obstack-config.alloy").write_text(rendered)
           PY
           docker run --rm --platform linux/amd64 --entrypoint /bin/alloy \
