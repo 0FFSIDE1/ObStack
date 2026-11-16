@@ -80,6 +80,26 @@ jobs:
             -v /tmp/obstack-config.alloy:/tmp/config.alloy:ro \
             grafana/alloy:v1.22.0 validate \
             --stability.level=generally-available /tmp/config.alloy
+      - name: Verify Alloy image supports remote host architectures
+        run: |
+          docker buildx imagetools inspect --raw grafana/alloy:v1.22.0 \
+            > /tmp/alloy-image-manifest.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(Path("/tmp/alloy-image-manifest.json").read_text())
+          platforms = {
+              f"{entry['platform']['os']}/{entry['platform']['architecture']}"
+              for entry in manifest.get("manifests", [])
+              if "platform" in entry
+          }
+          required = {"linux/amd64", "linux/arm64"}
+          missing = required - platforms
+          if missing:
+              raise SystemExit(f"Alloy image lacks required platforms: {sorted(missing)}")
+          print(f"Verified Alloy platforms: {sorted(required)}")
+          PY
       - name: Validate all Ansible playbook syntax
         run: |
           set -euo pipefail

@@ -1,0 +1,8 @@
+---
+schema_version: 1
+# Set only after the WireGuard overlay has passed overlap review.
+# The proposed 10.77.0.0/24 range is not assumed to be approved.
+approved_wireguard_cidr: null
+# Add inventory aliases only after confirming they exist in the reviewed
+# Ansible inventory. Do not put addresses or credentials in this list.
+approved_inventory_hosts: []

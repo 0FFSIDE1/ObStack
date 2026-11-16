@@ -6,7 +6,7 @@
 
 ## What you will build
 
-ObStack collects metrics (numbers such as CPU, memory and service health) and logs (event records) from remote Ubuntu servers, then lets an operator view them centrally.
+ObStack is designed to collect metrics and logs from remote Ubuntu servers. The repository provides central ingestion endpoints and an Alloy starter configuration, but remote application enrollment, log sources, and host/container-agent operation still require review and verification. This guide describes a staged pilot; it does not assert that remote telemetry currently arrives.
 
 - Central host: AWS EC2, Ubuntu 24.04 LTS, ARM64, 2 vCPU, 2 GB RAM, 14 GB disk.
 - Remote hosts: Ubuntu 24.04 LTS; fleet currently planned as five AMD64 and five ARM64.
@@ -360,38 +360,28 @@ It checks service readiness, TLS certificate trust, the Prometheus remote-write 
 
 Once WireGuard and Nginx TLS are verified, the operator may approve changing Nginx's binding to the WireGuard IP. Public AWS TCP 443 remains closed.
 
-## Step 16 — Onboard Alloy on the pilot servers (approval required)
+## Step 16 — Discover Alloy and review telemetry sources (approval required)
 
 1. Review the output from `discover-alloy.yml`: identify current container owner, image, config mounts, secrets mounts and data sources. Do not create a second Alloy agent on a host that already has one.
-2. Generate a distinct metrics and logs password for each pilot host.
-3. Securely export environment variable names matching the inventory aliases:
-   - `OBSTACK_ALLOY_METRICS_PASSWORD_PILOT_AMD64`
-   - `OBSTACK_ALLOY_LOGS_PASSWORD_PILOT_AMD64`
-   - corresponding variables for the ARM64 pilot.
-4. Stage the configuration and protected password files (this playbook has an explicit change gate):
+2. Do not stage/adopt the starter config as proof of log collection: it has no log source, bounded buffer, or agent health path.
+3. Application registration currently rejects enabled logs and host monitoring. Keep those features disabled until the log source, privilege model, supported architectures, install lifecycle, health reporting, bounded buffering, and rollback plan are approved and implemented. The application metrics scrape path is separate and requires the approved WireGuard CIDR plus verified target and Laravel-observed source.
+4. `alloy-onboarding.yml` defaults to preserve and does not install, restart or reconfigure the existing agent. Do not set `obstack_alloy_existing_policy=adopt` until a specific source design is reviewed.
 
-```bash
-ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/alloy-onboarding.yml \
-  --private-key /secure/location/central-key.pem \
-  -e obstack_apply=true --limit pilot-amd64,pilot-arm64
-```
+The central Loki and remote-write endpoints are available for a future approved collector, but configuring a receiver does not establish an active sender.
 
-This stages configuration and secrets only; the role's default policy preserves existing agent ownership and does not automatically restart/replace the existing container. A separate reviewed container Compose change is required to mount the CA and password files read-only and restart/adopt the agent.
-
-## Step 17 — Confirm the first telemetry arrives
+## Step 17 — Verify only configured telemetry paths
 
 Use the private approved access path to Grafana. Do not publish its backend port.
 
 1. Sign in with the Grafana admin username/password created during central deployment.
 2. Open the provisioned **ObStack Central Overview** dashboard.
-3. Check service status and Prometheus targets. Initially, the dashboard may not show host metrics until exporters/Alloy sources are configured and pilot integration testing is complete.
-4. Verify logs in Grafana Explore using the host/project labels configured for the pilot.
-5. Confirm each pilot's metrics and logs arrive, timestamps are sensible, labels identify the right project/environment/server, and authentication/TLS validation succeeds.
-6. Confirm a failed authentication is rejected; do not weaken auth or TLS to “make it work.”
-7. Measure actual disk growth and memory/CPU use for several days. The 14 GB central disk is constrained; prove the retention targets against real ingest volume.
+3. Check central services and Prometheus targets. Empty remote panels are expected until an application has a validated registration and authorized path.
+4. Verify a remote app scrape or health probe only after its target has been supplied, generated, reviewed, and enabled. `/up` is liveness, not dependency readiness.
+5. Do not claim remote logs or host/container metrics are present; those sources are not enabled by the current onboarding contract.
+6. Measure actual disk growth and memory/CPU use during an approved staging pilot. The 14 GB central disk is constrained; prove retention targets against real ingest volume.
 
 **Figure 9 — Grafana dashboard:** capture a pilot dashboard with non-sensitive host labels only. Blur IPs, customer names, tokens and log contents.
-**Figure 10 — Grafana Explore logs:** capture an example only after redacting payloads and personal data.
+**Figure 10 — Grafana Explore logs:** capture only after an approved source is implemented, verified, and its content has been redacted.
 
 ## Step 18 — Release using GitHub Actions (only after pipeline readiness)
 
