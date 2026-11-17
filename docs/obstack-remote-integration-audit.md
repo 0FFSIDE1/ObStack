@@ -1,6 +1,6 @@
 # ObStack remote integration audit — ENSAMS
 
-Audit date: 2026-11-16. This audit is based on the ObStack repository and the supplied ENSAMS integration contract and audit. Repository configuration is not evidence that central or remote production services are deployed.
+Audit date: 2026-11-17. This audit is based on the ObStack repository and the supplied ENSAMS integration contract and audit. Repository configuration is not evidence that central or remote production services are deployed. Branch and CI evidence is maintained in [current implementation and project status](implementation-status.md).
 
 ## Current architecture and implementation inventory
 

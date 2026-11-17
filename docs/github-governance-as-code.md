@@ -6,7 +6,7 @@ This repository stores its GitHub repository rulesets in `.github/rulesets/*.jso
 
 - Protect `main` and `release` with pull-request-only changes.
 - Require one approving review, dismiss stale approvals, require approval of the latest push, and resolve review conversations.
-- Require the two CI checks that have been observed on the current PR: `config` and `Syntax, lint, Compose and Nginx validation`.
+- The committed branch ruleset currently lists stale CI contexts (`config` and `Syntax, lint, Compose and Nginx validation`). Current workflows report `Validate configuration` and `Ansible validation`; update the JSON and verify effective ruleset state before relying on the protection. See [current implementation and project status](implementation-status.md).
 - Require signed commits and linear history; disallow force pushes and branch deletion.
 - Protect semantic version tags matching `v*`: only the repository owner can create them, and no actor can update or delete them.
 - Keep release deployment's exact-`release`-HEAD check in `.github/workflows/release.yml`. A ruleset does not prove the tag points to the reviewed release branch commit.
@@ -33,6 +33,6 @@ The workflow uses GitHub's authenticated API and is idempotent: it creates missi
 - Committing these JSON files does not activate any repository protection by itself.
 - The workflow's validation job is read-only. Repository settings are changed only when `apply=true`, the required environment approval is granted, and the administrator token is available.
 - The current connector cannot write repository rulesets directly, so activation must happen through the approved workflow run.
-- The branch protection rules require the exact CI check names listed above. If a workflow/job is renamed, update the required contexts in the JSON before applying; otherwise PRs can remain blocked by a missing required check.
+- The branch ruleset must require the exact current CI check names, `Validate configuration` and `Ansible validation`. The checked-in JSON currently needs alignment. If a workflow/job is renamed, update the required contexts before applying; otherwise PRs can remain blocked by a missing required check.
 - GitHub rulesets do not guarantee that a tag's target is the current release branch HEAD. The release workflow independently enforces exact SHA equality before deployment.
 - No AWS resources, EC2 instances, production hosts, WireGuard configuration, or deployments are changed by this governance workflow.

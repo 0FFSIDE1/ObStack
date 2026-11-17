@@ -387,14 +387,14 @@ Use the private approved access path to Grafana. Do not publish its backend port
 
 The release workflow is intended to run on a version tag in the format `vMAJOR.MINOR.PATCH`, for example `v1.0.0`.
 
-1. Ensure the release commit is merged to `main`.
+1. Merge the reviewed changes to `main`, then open and merge the approved promotion PR from `main` to `release`.
 2. Ensure CI validation checks pass.
 3. Confirm GitHub **production** environment secrets and reviewer restrictions are set.
 4. Confirm the workflow has been verified end-to-end in a safe staging target. The current release workflow is not proof that the first deployment is ready.
 5. From a local checkout, create and push a version tag only after approval:
 
 ```bash
-git checkout main
+git checkout release
 git pull --ff-only
 git tag -a v1.0.0 -m "ObStack release v1.0.0"
 git push origin v1.0.0
@@ -421,7 +421,7 @@ After both pilot architectures pass end-to-end checks:
 - Use the ObStack overview dashboard to check central service/target health.
 - Use Explore for metrics/log searches; filter by project, environment and server labels.
 - Review alert notifications only after a real HTTPS webhook destination has been configured and delivery tested. By default, the Alertmanager receiver is a sink and sends no messages.
-- Monitor central disk free space, memory pressure and ingestion rate. Filesystem free-space alerting, backup/restore, RPO/RTO and certificate renewal automation remain operational work items.
+- Monitor central disk free space, memory pressure and ingestion rate. Filesystem free-space alerting, backup/restore, RPO/RTO and runtime verification of the configured leaf-certificate renewal timer remain operational work items.
 
 ### Common problems
 

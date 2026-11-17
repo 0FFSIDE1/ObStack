@@ -76,7 +76,7 @@ Required low-cardinality identity labels: `project`, `environment`, `server`, `i
 - Docker service plane: dedicated Compose networks; internal services and exporters remain private.
 - Management plane: SSH/Ansible restricted to approved sources.
 - Secrets: Docker secrets or protected files; encrypted off-host backup; placeholders only in `.env.example`.
-- TLS verification remains enabled; plan renewal and certificate expiry monitoring.
+- TLS verification remains enabled. A central leaf-certificate renewal timer is configured; verify it at runtime and plan CA rotation and expiry alerting.
 - Pinned images, non-root where supported, read-only FS/drop capabilities/resource controls where compatible; document host mounts and exceptions.
 - Log collection is privacy-reviewed; sensitive biometric payloads are excluded.
 
