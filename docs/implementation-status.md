@@ -1,6 +1,6 @@
 # ObStack implementation status
 
-**Source of truth:** repository `main` branch and the workflow runs attached to the relevant pull request/commit.  
+**Source of truth:** repository `main` branch and the workflow runs attached to the relevant pull request/commit.
 **Status:** The central stack, authenticated ingestion configuration, WireGuard/CA/CIDR automation, governance-as-code, CI validation and tag-driven release automation are present in the repository. No AWS infrastructure or production host has been deployed or modified. Runtime acceptance remains pending.
 
 ## Implemented in repository
