@@ -18,9 +18,9 @@ groups:
           severity: warning
           category: application-availability
         annotations:
-          summary: "Application liveness endpoint is unavailable"
+          summary: "Application health endpoint is unavailable"
           description: >-
-            The {{ $labels.service }} liveness endpoint on {{ $labels.host }}
+            The {{ $labels.application }} health endpoint on {{ $labels.host }}
             has failed for 3 minutes. This endpoint reports liveness only, not
             dependency readiness.
 
@@ -33,7 +33,7 @@ groups:
         annotations:
           summary: "Application metrics target is unavailable"
           description: >-
-            Prometheus cannot scrape {{ $labels.service }} on {{ $labels.host }}.
+            Prometheus cannot scrape {{ $labels.application }} on {{ $labels.host }}.
             Check the WireGuard path, host firewall, endpoint allowlists and
             application listener.
 

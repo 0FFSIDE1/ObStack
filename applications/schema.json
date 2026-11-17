@@ -1,42 +1,98 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://obstack.invalid/schemas/application-registration-v1.json",
+  "$id": "https://obstack.invalid/schemas/application-registration-v2.json",
   "title": "ObStack application registration",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "application", "environment", "inventory_host", "enabled", "metrics", "health", "logs", "host_monitoring", "blackbox", "dashboards", "alerts", "migration_stage"],
   "properties": {
-    "schema_version": {"const": 1},
+    "schema_version": {"const": 2},
     "application": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{1,62}$"},
     "environment": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9_-]{0,31}$"},
-    "inventory_host": {"type": ["string", "null"]},
+    "inventory_host": {"type": ["string", "null"], "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9_-]{0,61}[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9_-]{0,61}[A-Za-z0-9])?)*$"},
     "enabled": {"type": "boolean"},
     "metrics": {
       "type": "object", "additionalProperties": false,
       "required": ["enabled", "target_address", "path", "interval", "timeout", "access"],
       "properties": {
         "enabled": {"type": "boolean"}, "target_address": {"type": ["string", "null"]},
-        "path": {"type": "string", "pattern": "^/"}, "interval": {"const": "30s"}, "timeout": {"const": "10s"},
-        "access": {"enum": ["private_wireguard"]}
-      }
+        "path": {"type": "string", "pattern": "^/[A-Za-z0-9._~/-]*$"},
+        "interval": {"const": "30s"}, "timeout": {"const": "10s"},
+        "access": {"const": "private_wireguard"}
+      },
+      "allOf": [
+        {"if": {"properties": {"enabled": {"const": true}}, "required": ["enabled"]},
+         "then": {"properties": {"target_address": {"type": "string"}}},
+         "else": {"properties": {"target_address": {"type": "null"}}}}
+      ]
     },
     "health": {
-      "type": "object", "additionalProperties": false, "required": ["enabled", "url", "meaning"],
-      "properties": {"enabled": {"type": "boolean"}, "url": {"type": ["string", "null"]}, "meaning": {"enum": ["liveness", "readiness"]}}
+      "type": "object", "additionalProperties": false,
+      "required": ["enabled", "url", "meaning"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "url": {"type": ["string", "null"], "pattern": "^https://"},
+        "meaning": {"enum": ["liveness", "readiness"]}
+      },
+      "allOf": [
+        {"if": {"properties": {"enabled": {"const": true}}, "required": ["enabled"]},
+         "then": {"properties": {"url": {"type": "string"}}},
+         "else": {"properties": {"url": {"type": "null"}}}}
+      ]
     },
     "logs": {
-      "type": "object", "additionalProperties": false, "required": ["enabled", "method", "labels"],
+      "type": "object", "additionalProperties": false,
+      "required": ["enabled", "method"],
       "properties": {
-        "enabled": {"type": "boolean"}, "method": {"enum": ["alloy_docker_agent", "alloy_files", "none"]},
-        "labels": {"type": "object", "additionalProperties": false, "required": ["service", "environment", "host"],
-          "properties": {"service": {"type": "string"}, "environment": {"type": ["string", "null"]}, "host": {"type": ["string", "null"]}}
+        "enabled": {"const": false}, "method": {"const": "none"}
+      }
+    },
+    "host_monitoring": {
+      "type": "object", "additionalProperties": false,
+      "required": ["enabled", "method"],
+      "properties": {"enabled": {"const": false}, "method": {"const": "none"}}
+    },
+    "blackbox": {
+      "type": "object", "additionalProperties": false,
+      "required": ["enabled"], "properties": {"enabled": {"type": "boolean"}}
+    },
+    "dashboards": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source_repository", "source_files"],
+      "properties": {
+        "source_repository": {"enum": ["application", "obstack"]},
+        "source_files": {
+          "type": "array", "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*$"}
         }
       }
     },
-    "host_monitoring": {"type": "object", "additionalProperties": false, "required": ["enabled", "method"], "properties": {"enabled": {"type": "boolean"}, "method": {"enum": ["alloy_remote_write", "none"]}}},
-    "blackbox": {"type": "object", "additionalProperties": false, "required": ["enabled"], "properties": {"enabled": {"type": "boolean"}}},
-    "dashboards": {"type": "object", "additionalProperties": false, "required": ["source_files"], "properties": {"source_files": {"type": "array", "items": {"type": "string"}}}},
-    "alerts": {"type": "object", "additionalProperties": false, "required": ["source_file"], "properties": {"source_file": {"type": "string"}}},
-    "migration_stage": {"enum": ["discovery", "configured", "validated_ci", "verified_staging", "verified_production", "ready_for_human_review", "retired_local"]}
-  }
+    "alerts": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source_repository", "source_file"],
+      "properties": {
+        "source_repository": {"enum": ["application", "obstack"]},
+        "source_file": {"type": ["string", "null"], "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*$"}
+      }
+    },
+    "migration_stage": {
+      "enum": ["discovery", "configured", "validated_ci", "verified_staging", "verified_production", "ready_for_human_review", "retired_local"]
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"enabled": {"const": true}}, "required": ["enabled"]},
+      "then": {
+        "properties": {"environment": {"type": "string"}, "inventory_host": {"type": "string"}},
+        "anyOf": [
+          {"properties": {"metrics": {"properties": {"enabled": {"const": true}}}}},
+          {"properties": {"health": {"properties": {"enabled": {"const": true}}}}}
+        ]
+      }
+    },
+    {
+      "if": {"properties": {"health": {"properties": {"enabled": {"const": true}}}}},
+      "then": {"properties": {"blackbox": {"properties": {"enabled": {"const": true}}}}}
+    }
+  ]
 }

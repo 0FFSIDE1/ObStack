@@ -137,7 +137,7 @@ Distribute only the public CA certificate after central provisioning:
     ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/distribute-ca.yml --syntax-check
     ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/distribute-ca.yml -e obstack_apply=true
 
-The playbook never copies CA or central TLS private keys. Alloy adoption defaults to preserve and does not restart or rewire an existing container. Before mounting staged password files, discover the container UID/GID and grant read-only access through a dedicated group. Never make password files world-readable.
+The playbook never copies CA or central TLS private keys. Alloy onboarding defaults to preserve and does not install, restart, or rewire an existing container. Its staged config has no log source, and staged files do not prove host metrics are collected. Remote log and host-monitoring registration methods are disabled pending a reviewed source and privilege design. Never expose a Docker socket over TCP or treat a read-only socket mount as a security boundary. Before any separately approved adoption, discover the container UID/GID and protect staged password files; never make them world-readable.
 
 ## Central validation
 
