@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://obstack.invalid/schemas/application-registration-v1.json",
+  "title": "ObStack application registration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "application", "environment", "inventory_host", "enabled", "metrics", "health", "logs", "host_monitoring", "blackbox", "dashboards", "alerts", "migration_stage"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "application": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{1,62}$"},
+    "environment": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9_-]{0,31}$"},
+    "inventory_host": {"type": ["string", "null"]},
+    "enabled": {"type": "boolean"},
+    "metrics": {
+      "type": "object", "additionalProperties": false,
+      "required": ["enabled", "target_address", "path", "interval", "timeout", "access"],
+      "properties": {
+        "enabled": {"type": "boolean"}, "target_address": {"type": ["string", "null"]},
+        "path": {"type": "string", "pattern": "^/"}, "interval": {"const": "30s"}, "timeout": {"const": "10s"},
+        "access": {"enum": ["private_wireguard"]}
+      }
+    },
+    "health": {
+      "type": "object", "additionalProperties": false, "required": ["enabled", "url", "meaning"],
+      "properties": {"enabled": {"type": "boolean"}, "url": {"type": ["string", "null"]}, "meaning": {"enum": ["liveness", "readiness"]}}
+    },
+    "logs": {
+      "type": "object", "additionalProperties": false, "required": ["enabled", "method", "labels"],
+      "properties": {
+        "enabled": {"type": "boolean"}, "method": {"enum": ["alloy_docker_agent", "alloy_files", "none"]},
+        "labels": {"type": "object", "additionalProperties": false, "required": ["service", "environment", "host"],
+          "properties": {"service": {"type": "string"}, "environment": {"type": ["string", "null"]}, "host": {"type": ["string", "null"]}}
+        }
+      }
+    },
+    "host_monitoring": {"type": "object", "additionalProperties": false, "required": ["enabled", "method"], "properties": {"enabled": {"type": "boolean"}, "method": {"enum": ["alloy_remote_write", "none"]}}},
+    "blackbox": {"type": "object", "additionalProperties": false, "required": ["enabled"], "properties": {"enabled": {"type": "boolean"}}},
+    "dashboards": {"type": "object", "additionalProperties": false, "required": ["source_files"], "properties": {"source_files": {"type": "array", "items": {"type": "string"}}}},
+    "alerts": {"type": "object", "additionalProperties": false, "required": ["source_file"], "properties": {"source_file": {"type": "string"}}},
+    "migration_stage": {"enum": ["discovery", "configured", "validated_ci", "verified_staging", "verified_production", "ready_for_human_review", "retired_local"]}
+  }
+}
