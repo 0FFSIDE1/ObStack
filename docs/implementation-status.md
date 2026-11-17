@@ -1,55 +1,51 @@
-# ObStack implementation status
+# Current implementation and project status
 
-**Source of truth:** repository `main` branch and the workflow runs attached to the relevant pull request/commit.  
-**Status:** The central stack, authenticated ingestion configuration, WireGuard/CA/CIDR automation, governance-as-code, CI validation and tag-driven release automation are present in the repository. No AWS infrastructure or production host has been deployed or modified. Runtime acceptance remains pending.
+**Status snapshot:** 2026-11-17. This describes committed repository configuration and GitHub history. It is not evidence of a deployed or runtime-verified observability service.
 
-## Implemented in repository
+## Repository and release state
 
-- ARM64-targeted central Compose services: Nginx reverse proxy, Prometheus, Loki, Grafana, Alertmanager and Blackbox Exporter.
-- Backend services remain loopback-only. Nginx runs in Docker with TLS and proxies Grafana; bootstrap bind is loopback-only until WireGuard is verified.
-- Prometheus 30-day time retention with a 3 GB TSDB size cap; Loki 20-day retention.
-- Prometheus remote-write receiver enabled explicitly; Nginx exposes only the authenticated /api/v1/write route.
-- Nginx exposes authenticated Loki /loki/api/v1/push and sets the configured single-node tenant header.
-- Separate per-host metrics and logs Basic Auth credentials, stored in Ansible Vault and provisioned as bcrypt htpasswd entries; Nginx runs unprivileged and reads its TLS key and auth hashes through a dedicated host group; secrets are not committed.
-- Grafana datasource provisioning plus a file-provisioned central platform overview dashboard (Prometheus scrape status, TSDB storage/series/ingestion, scrape duration, reload health and targets); conservative alert rules and Blackbox probe modules.
-- Prometheus alert rules for missing scrape targets, failed config reloads, and warning/critical thresholds near the configured 3 GB TSDB storage cap.
-- Optional HTTPS Alertmanager webhook delivery via OBSTACK_ALERTMANAGER_WEBHOOK_URL from the Ansible controller environment. The rendered configuration is group-readable only by the dedicated container group; CI validates sink and webhook configurations with amtool.
-- Secret-free example environment and Ansible inventory.
-- Read-only Ubuntu/architecture preflight and Docker/Alloy discovery that avoids container environment variables and secret values.
-- First-pass native WireGuard hub/spoke Ansible role and explicitly gated mutating playbook; peer address/key uniqueness, keypair validation, actual hub-derived AllowedIPs and static peer egress validation added.
-- Central UFW UDP 51820 ingress is scoped to the verified static public egress IPv4 for each enrolled spoke; AWS Security Group allowlisting remains a separate manual prerequisite.
-- First-pass central-host Ansible workflow: Ubuntu 24.04 ARM64 checks, Africa/Lagos timezone, baseline security configuration, UFW/fail2ban/unattended upgrades, official Docker Engine/Compose installation, private CA and WireGuard-IP server certificate generation, Docker Compose deployment/startup and readiness checks.
-- Central-host SSH hardening with key-only authentication after authorized_keys preflight, root login disabled, forwarding disabled, and sshd syntax validation before reload.
-- Local command auditing using auditd execve/execveat records and sudo command logs, with bounded local log retention.
-- Weekly systemd-managed central leaf TLS certificate renewal, chain/key validation, Nginx config test/reload and rollback on failure; CA rotation remains a separately planned operation.
-- Gated public-CA distribution playbook; transfers only ca.crt, never private keys.
-- Read-only central validation playbook for Compose services, readiness endpoints, Prometheus receiver flag, TLS trust and authenticated/unauthenticated ingress behavior.
-- Alloy onboarding role with preserve-by-default policy, HTTPS/TLS verification and password-file support. It stages config/secrets only and does not restart or replace existing containers.
-- GitHub Actions validation for Ansible syntax/lint, Compose rendering, Nginx syntax, Prometheus config/rules, Alertmanager config, Loki config, Blackbox Exporter config, Grafana provisioning YAML and dashboard JSON.
-- Initial design-level threat model and preliminary scoped ISO/IEC 27002:2022 control/evidence mapping (explicitly Partial/Pending, not a compliance assertion).
-- Operations guide documenting network diagram, ingress/host-local port inventory, Compose resource-ceiling sum and failure-mode responses.
+- The default `main` branch is at `c251af6` (`Promote main to release v0.0.1`, PR #28).
+- The `release` branch is at `5cd4661` (`docs(release): prepare v0.0.2 notes`, PR #30). It includes the promotion from `main` in PR #29 and the trailing-whitespace correction in PR #31.
+- PRs #25 and #26 integrated remote application onboarding and its hardening into `main`. PR #27 was closed without merging after its conflict was resolved through PR #29.
+- `release-notes/v0.0.2.md` is pending release metadata. The repository currently has no version tags or published GitHub Releases. No tagged deployment has run.
+- No AWS VPC/EC2 hub or remote host has been provisioned by this repository work. The available Elastic IP is not associated with a hub; the proposed `10.77.0.0/24` overlay remains unapproved.
 
-## Not yet implemented or validated
+### Recent CI evidence
 
-- Final VPC/overlay CIDR, real host inventory, public keys, private keys and Ansible Vault secrets.
-- Central provisioning playbook has not yet been run; controller collections, SSH key login, SSH source CIDR, repository path, certificate trust distribution and host-specific values must be supplied. Audit log off-host forwarding and tamper-resistant retention are not yet configured.
-- Runtime validation of WireGuard, firewall/security-group behavior and pilot handshakes.
-- A configured CI workflow is not proof that a particular commit passed. Check the latest pull-request run for `config` and `Syntax, lint, Compose and Nginx validation` before merge.
-- CA trust distribution and central end-to-end validation have not been run against a deployed host.
-- Nginx remains loopback-bound until WireGuard hub provisioning and verification; no public HTTPS exposure is intended.
-- Host-specific Compose adoption for existing Alloy containers; config/secret/CA/host metric mounts.
-- Actual log sources (Docker socket, journald or files) per server.
-- Remote telemetry acceptance, payload delivery and authentication tests from AMD64 and ARM64 pilot hosts.
-- DNS/public-CA lifecycle and CA rotation automation, additional project/application dashboards, exporter deployment, and destination-specific alert routes. Generic webhook delivery is implemented but no actual endpoint has been provided; if unset, Alertmanager intentionally uses a sink.
-- Backup/restore, off-host storage, RPO/RTO and DR tests.
-- Verification of the preliminary ISO/IEC 27002:2022 evidence mapping, security review and native ARM64 runtime behavior.
-- Host filesystem/free-space and service-level capacity alerts; current Prometheus TSDB block-cap alerts are implemented but do not indicate OS/disk free-space headroom.
-- Capacity validation against measured ingestion volume.
+These workflow runs passed on their respective pull-request commits:
+
+| Change | Commit | Validate configuration | Ansible validation |
+| --- | --- | --- | --- |
+| Main-to-release promotion, PR #29 | `f5f532d` | #304 passed | #165 passed |
+| Pending v0.0.2 notes, PR #30 | `724e74c` | #309 passed | #169 passed |
+| Release whitespace correction, PR #31 | `1e6f34a` | #307 passed | #168 passed |
+
+These results establish repository checks only. They do not show that AWS, central services, WireGuard peers, remote collectors, dashboards, or notifications are running.
+
+## Implemented in the repository
+
+- A Docker Compose observability stack with Prometheus, Loki, Grafana, Alertmanager, Blackbox Exporter, and Dockerized Nginx. Images and service limits are configured for the intended small ARM64 pilot.
+- Authenticated HTTPS ingestion routes for Prometheus remote-write and Loki push, per-host credential provisioning, a private CA, public-CA distribution, and automated central leaf-certificate renewal configuration.
+- Ansible roles and gated playbooks for central host setup, host security, WireGuard, CIDR discovery, CA distribution, Alloy discovery/onboarding, and read-only central validation. Mutating plays require `obstack_apply=true`.
+- A declarative application registration schema and validator. Metrics and health targets must be literal private addresses inside the centrally configured WireGuard CIDR. Registrations generate deterministic Prometheus file-SD and target-disappearance alerts. ENSAMS remains disabled; the central CIDR and approved inventory hosts remain unset.
+- Generic application scrape/probe alerts, platform alerts, one provisioned Grafana overview dashboard, and optional HTTPS Alertmanager webhook configuration. The default Alertmanager receiver is a sink, so it sends no notifications until a destination is configured and tested.
+- CI for Python validation, registrations and generated-file drift, secret scanning, Compose, Prometheus, Alertmanager, Blackbox, Loki, Grafana assets, Alloy syntax and architecture manifests, Ansible syntax/lint, and Nginx configuration.
+- Release-note generation, pending metadata validation, exact `release`-HEAD tag checks, and a production deployment workflow gated by GitHub environments.
+
+## Not deployed or not yet verified
+
+- No VPC, EC2 hub, security group, production host, WireGuard peer, key, or application has been provisioned or changed through this work. The CIDR preflight workflow is read-only and requires real network inputs and credentials before it can run against infrastructure.
+- No remote application registration is enabled. ENSAMS has no approved CIDR, target address, inventory hostname, environment, or health URL.
+- The Alloy onboarding role stages configuration; it does not install or restart an agent. Remote logs and host monitoring remain disabled because there is no approved source/privilege model, bounded-buffer design, deployment lifecycle, or agent-health path.
+- No live scrape, health probe, telemetry delivery, backup restore, failure recovery, alert notification, or AMD64/ARM64 remote pilot has been verified.
+- ENSAMS dashboards and alert rules remain external references, not imported files. Application-specific queue/scheduler rules need actual metric names and samples.
+- Requested retention (30 days of metrics and 20 days of logs) is configured, not capacity-proven. The intended 2 vCPU / 2 GB RAM / 14 GB disk hub is a constrained pilot target. Loki has no hard volume-size cap, and filesystem free-space alerting is not implemented.
+- No published release tag or GitHub Release exists. The v0.0.2 notes are pending; production deployment, root changelog promotion, backup/restore, RPO/RTO, and DR evidence remain outstanding.
+
+## Governance and CI follow-up
+
+`.github/rulesets/branches-main-release.json` still names the required checks `config` and `Syntax, lint, Compose and Nginx validation`. Current workflow runs report `Validate configuration` and `Ansible validation`. The repository's effective GitHub ruleset state has not been independently confirmed here; align and verify required check contexts through the approval-gated governance workflow before relying on them for branch protection.
 
 ## Safety and capacity
 
-Repository work has not created AWS resources, associated the Elastic IP, installed packages, generated production keys/certificates on a host, changed security groups/firewalls, contacted or modified production servers, or restarted any containers. CI uses temporary test-only credentials and certificates.
-
-The central 2 vCPU / 2 GB RAM / 14 GB disk host remains a constrained pilot target. Compose limits are provisional. Prometheus's 3 GB cap and Loki's 20-day retention do not guarantee requested retention; measure ingestion and disk growth. Loki filesystem storage is single-node.
-
-Prometheus, Loki, Grafana, Alertmanager and Blackbox ports remain bound to loopback. Do not expose them publicly. Remote Alloy must not be enabled until the WireGuard path, public CA distribution, authenticated TLS ingress and pilot delivery tests are implemented and passed.
+Repository configuration and passing CI do not authorize production changes. Keep local application monitoring in place until central ingestion, dashboards, alerts, notification delivery, retention, and recovery have been verified with evidence and approved by the owners. See the [ENSAMS migration readiness record](integrations/ensams-migration-readiness.md), [network architecture](network-architecture.md), and [operations guide](operations/ports-capacity-failure-modes.md).

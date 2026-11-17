@@ -29,7 +29,7 @@ This first iteration uses a single Loki tenant, obstack. Per-host Basic Auth aut
 
 ## Certificate distribution
 
-The central Ansible certificates role creates a private CA and a central server certificate. The CA private key and server key remain root-only on the central host. The gated distribute-ca playbook transfers only the public CA certificate to enrolled spokes and verifies it; it never copies a private key. The existing Alloy container must mount the host CA file read-only at the path configured in its TLS settings. CA renewal, server certificate renewal and automated rotation remain outstanding operational work.
+The central Ansible certificates role creates a private CA and a central server certificate. The CA private key and server key remain root-only on the central host. The gated distribute-ca playbook transfers only the public CA certificate to enrolled spokes and verifies it; it never copies a private key. The existing Alloy container must mount the host CA file read-only at the path configured in its TLS settings. A systemd timer is configured to renew the central leaf certificate before it expires and validate/reload Nginx. Runtime timer execution still needs verification; CA rotation and peer trust refresh remain operational work.
 
 ## Host time
 
@@ -44,7 +44,11 @@ The central Ubuntu host timezone is set to Africa/Lagos. Chrony maintains system
 - ansible/playbooks/alloy-onboarding.yml: preserve-by-default; adoption stages config and password files only and does not restart or rewire a container.
 - Private keys and credentials remain external secrets in Ansible Vault.
 
-## CIDR overlap preflight\n\nSee [network CIDR overlap preflight](network-cidr-overlap-preflight.md) and the read-only Python checker at `ansible/scripts/check_cidr_overlaps.py`. The checker evaluates a collected input list; it does not yet auto-discover all AWS/host/Docker/home-office networks end-to-end.\n\n## Preconditions and sequence
+## CIDR overlap preflight
+
+See [network CIDR overlap preflight](network-cidr-overlap-preflight.md) and the read-only Python checker at `ansible/scripts/check_cidr_overlaps.py`. The manual workflow now gathers AWS VPC/subnet ranges, host interfaces/routes, and Docker IPAM ranges before running the checker. It requires network credentials and complete host access; office/home VPN ranges still need to be disclosed by their owners. The workflow is read-only and requires human approval before any network change.
+
+## Preconditions and sequence
 
 1. Confirm VPC CIDR, office/home/existing VPN ranges and route overlap.
 2. Verify the Elastic IP allocation/region and plan its association with the future hub.

@@ -1,6 +1,6 @@
 # ObStack — Phased Implementation Plan
 
-**Status:** Implementation work in progress; architecture decisions and production prerequisites remain subject to explicit approval. This plan is not evidence of a completed deployment or successful runtime tests.
+**Status (2026-11-17):** Repository implementation and CI validation have advanced through the application-onboarding and release-promotion work. Production prerequisites, staging tests, and runtime acceptance remain open. See [current implementation and project status](implementation-status.md) for branch heads and recent CI evidence. This plan is not evidence of a completed deployment.
 
 ## Phase 1 — Discovery and architecture
 
@@ -56,7 +56,7 @@
 - [x] Gated public CA distribution playbook; transfers only the CA certificate, never private keys.
 - [x] Read-only central validation playbook for Compose, service health, Prometheus receiver flag, TLS and endpoint authentication.
 - [x] GitHub Actions workflow for Ansible syntax, Ansible Lint, Compose rendering and Nginx syntax validation.
-- [ ] Obtain successful CI run and review all validation findings.
+- [x] Configuration and Ansible workflows have passed on recent promotion/release PRs; see the run IDs in `docs/implementation-status.md`. Continue to check the exact commit under review.
 - [ ] Complete peer rotation/revocation and host-specific Alloy container adoption procedures.
 
 ## Phase 6 — Alerting
@@ -81,8 +81,9 @@
 
 - [x] Add CI checks for Ansible syntax/lint, Compose rendering and Nginx configuration syntax.
 - [x] Add Prometheus config/rule, Alertmanager, Loki, Blackbox Exporter, Grafana provisioning YAML and dashboard JSON checks to the configuration workflow.
+- [x] Add application schema/policy validation, deterministic generated-target/rule drift checks, Python tests, Gitleaks scanning, and AMD64/ARM64 Alloy image checks to CI.
 - [x] Add read-only central runtime validation for service readiness, TLS trust, Prometheus receiver and unauthenticated/authenticated route behavior.
-- [ ] Run CI and capture actual results; do not infer success from workflow configuration.
+- [x] Run CI and record actual results for merged promotion/release changes in `docs/implementation-status.md`; continue to validate each later commit.
 - [ ] Integration checks: metrics/logs/query paths, labels, alert routes, persistent data, backup restore.
 - [ ] WireGuard tests: enrolled peers connect; unique routes; no overlap; reboot/NAT reconnect; UDP reachability; unauthorized peer rejection; key revocation; telemetry endpoints inaccessible from public interfaces.
 - [ ] Architecture matrix checks: central ARM64 and remote ARM64/AMD64 image manifests, checksums, package availability and successful agent startup.
@@ -93,7 +94,7 @@
 ## Phase 9 — Documentation and operations
 
 - [x] Document authenticated telemetry paths, credential model, CA distribution, WireGuard routing policy and rollout sequence in docs/telemetry-ingestion.md.
-- [ ] Document certificate renewal/rotation, peer revocation, backup recovery, RPO/RTO and DR procedures.
+- [x] Document automated central leaf-certificate renewal and its limits; CA rotation, peer revocation, backup recovery, RPO/RTO and DR procedures remain pending.
 - [x] Document the initial Compose resource ceilings, required ports and ingress policy, logical network diagram and failure-mode guide in docs/operations/ports-capacity-failure-modes.md.
 - [ ] RPO/RTO and backup retention approved and restoration rehearsed.
 
