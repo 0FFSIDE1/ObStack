@@ -23,13 +23,13 @@ The `obstack-main-release-protection` ruleset targets both `main` and `release` 
 3. Dismissal of stale approvals when new commits are pushed.
 4. Approval of the most recent reviewable push by someone other than its author.
 5. Resolution of all review conversations.
-6. Successful and up-to-date `config` and `Syntax, lint, Compose and Nginx validation` checks.
+6. Successful and up-to-date `Validate configuration` and `Ansible validation` checks, matching the current workflow names.
 7. Verified signed commits and linear history.
 8. No force pushes and no branch deletion.
 9. No bypass actors, including repository administrators.
 10. Squash or rebase merging only.
 
-If a CI job is renamed, update the required check context in the ruleset JSON before applying it. A mismatched required check intentionally blocks merging rather than weakening the policy.
+The committed `.github/rulesets/branches-main-release.json` currently contains older check contexts (`config` and `Syntax, lint, Compose and Nginx validation`). Update them to the current workflow names and apply the ruleset through the approval-gated governance workflow. The effective GitHub ruleset state must be verified in repository settings; see [current implementation and project status](implementation-status.md). A mismatched required check can block merging.
 
 ## Version tag controls
 

@@ -31,7 +31,7 @@ This first iteration uses one Loki tenant, obstack, for the entire ObStack insta
 
 The central certificates role creates a private CA key/certificate and a central server certificate with an IP SAN matching the hub WireGuard address. The CA private key and central server private key remain root-only on the central host. The distribute-ca playbook transfers only the public CA certificate to enrolled spokes, in batches of two, and verifies the installed certificate. It never transfers a private key.
 
-The Alloy container must mount the spoke host certificate at /etc/ssl/certs/obstack-ca.crt, matching the Alloy tls_config ca_file. Certificate SAN and the IP in both Alloy URLs must match exactly. Do not disable TLS verification. CA renewal, server certificate renewal and automated rotation remain operational follow-up work; monitor the 397-day leaf certificate expiry and retain the CA private key securely offline.
+The Alloy container must mount the spoke host certificate at /etc/ssl/certs/obstack-ca.crt, matching the Alloy tls_config ca_file. Certificate SAN and the IP in both Alloy URLs must match exactly. Do not disable TLS verification. A systemd timer is configured to renew the central leaf certificate before it expires and validate/reload Nginx. Verify timer execution and alerting during staging. CA rotation, peer trust refresh, and secure offline custody of the CA private key remain operational work.
 
 ## WireGuard hub and spokes
 

@@ -1,12 +1,12 @@
 # ENSAMS migration readiness
 
-Assessment date: 2026-11-16. ENSAMS remains disabled. Local Prometheus, Grafana, Loki, Alloy, Alertmanager, node-exporter, cAdvisor, PHP-FPM exporter and Nginx exporter must remain in place until central telemetry is proven and local retirement is separately approved.
+Assessment date: 2026-11-17. ENSAMS remains disabled. Local Prometheus, Grafana, Loki, Alloy, Alertmanager, node-exporter, cAdvisor, PHP-FPM exporter and Nginx exporter must remain in place until central telemetry is proven and local retirement is separately approved. Repository and CI status is summarized in [current implementation and project status](../implementation-status.md).
 
-PR #25 was inspected at head `5da01da6aa785682bcbaed1aa675f9d3e732313e`. Its required `Validate configuration` run 297 and `Ansible validation` run 159 both passed. Those are CI configuration results, not live infrastructure evidence. This separate hardening branch must pass its own checks before merge.
+PRs #25 and #26 are merged into `main`. Their CI runs passed, as did the later main-to-release and release-metadata promotion checks. Passing CI validates repository configuration only; it is not live infrastructure evidence. Current branch heads and recent run IDs are in the project status report.
 
 | Migration gate | Status | Evidence / remaining work |
 | --- | --- | --- |
-| Registration schema validated | CONFIGURED | Schema v2 and validator enforce conditional feature requirements. Current hardening branch tests are pending CI. |
+| Registration schema validated | CONFIGURED | Schema v2 and validator enforce conditional feature requirements. Required configuration and Ansible validation workflows have passed on the merged changes. |
 | Registration values supplied | NOT STARTED | ENSAMS environment, inventory hostname, WireGuard target and health URL remain null. |
 | Approved WireGuard CIDR | REQUIRES HUMAN APPROVAL | `applications/policy.yml` is intentionally null. Network owner must complete overlap review and approve the CIDR. |
 | Configuration generated | CONFIGURED | Empty file-SD targets and generated alert rules are deterministic. No target is generated while ENSAMS is disabled. |

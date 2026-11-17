@@ -8,7 +8,7 @@ Centralized observability for multiple projects and remote Linux servers.
 
 ## Current implementation
 
-The repository implementation is merged into `main`.
+The repository snapshot is dated 2026-11-17. The implementation is integrated into `main`; the current `release` branch contains the same platform baseline plus pending v0.0.2 release metadata. Neither branch represents a production deployment. See [current implementation and project status](docs/implementation-status.md) for branch heads, CI evidence, and outstanding operational gates.
 
 - Central Docker Compose stack: Prometheus, Loki, Grafana, Alertmanager, Blackbox Exporter and Dockerized Nginx.
 - Central images are pinned to ARM64 platform.
@@ -21,10 +21,11 @@ The repository implementation is merged into `main`.
 - Grafana datasources and a baseline central platform overview dashboard are provisioned from files.
 - Prometheus rules alert on unavailable scrape targets, failed configuration reloads and TSDB storage nearing its configured cap; host filesystem headroom alerts still require host-level metrics.
 - Remote application registrations under `applications/` generate committed Prometheus file-SD targets only for literal IPs inside the centrally approved WireGuard CIDR. The approved CIDR and ENSAMS targets remain unset until network review is complete.
+- The registration contract generates generic application scrape/probe alerts and blocks remote log and host-monitoring collection until a source and privilege model are implemented.
 - Alertmanager supports optional HTTPS webhook delivery using the controller environment variable `OBSTACK_ALERTMANAGER_WEBHOOK_URL`; unset means no notification delivery (sink receiver).
 - Ansible includes read-only discovery, gated central provisioning, WireGuard hub/spoke provisioning, CA distribution and read-only central validation.
 
-CI validates the application schema and registrations, generated targets/rules, approved WireGuard network enforcement, Python tests, secret scanning, Ansible, Alloy configuration and image architectures, Compose, Nginx, Prometheus, Alertmanager, Loki, Blackbox Exporter and Grafana provisioning/dashboard assets. A passing CI run is not evidence of deployed runtime behavior.
+CI validates the application schema and registrations, generated targets/rules, approved WireGuard network enforcement, Python tests, Gitleaks secret scanning, Ansible, Alloy configuration and image architectures, Compose, Nginx, Prometheus, Alertmanager, Loki, Blackbox Exporter and Grafana provisioning/dashboard assets. Passing CI is not evidence of deployed runtime behavior.
 
 See [implementation status](docs/implementation-status.md), [architecture](docs/architecture.md), [network architecture](docs/network-architecture.md), [telemetry ingestion](docs/telemetry-ingestion.md), [implementation plan](docs/implementation-plan.md), [operations guide](docs/operations/ports-capacity-failure-modes.md), [threat model](docs/security/threat-model.md) and [preliminary ISO/IEC 27002 mapping](docs/security/iso-27002-2022-preliminary-mapping.md).
 

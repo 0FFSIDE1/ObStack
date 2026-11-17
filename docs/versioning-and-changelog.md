@@ -4,6 +4,11 @@ ObStack's root `CHANGELOG.md` is the published release history. Release notes
 are kept as pending metadata under `release-notes/vMAJOR.MINOR.PATCH.md` until
 the tagged deployment has succeeded.
 
+**Repository snapshot (2026-11-17):** `v0.0.2` metadata is pending on the
+`release` branch. No version tag or GitHub Release has been published, and no
+tagged deployment has run. See [current implementation and project
+status](implementation-status.md) for the branch heads and CI evidence.
+
 ## Automatic release-note generation
 
 Release-note entries are generated from merged pull requests on the `release`
