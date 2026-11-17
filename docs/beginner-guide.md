@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 7404)
-Total output lines: 458
-
 # ObStack Beginner's Guide — From AWS Setup to First Telemetry
 
 > **Audience:** A first-time operator who has never deployed a monitoring platform.
@@ -205,7 +202,83 @@ The group variable example is `ansible/inventory/group_vars/observability.yml.ex
 
 ```bash
 mkdir -p ansible/inventory/group_vars
-cp ansible/inventory/group_vars/obser…1404 tokens truncated…p 11 — Run read-only checks before changing any server
+cp ansible/inventory/group_vars/observability.yml.example ansible/inventory/group_vars/observability.yml
+```
+
+Use YAML syntax carefully; quote strings that include special characters. Verify the final inventory:
+
+```bash
+ansible-inventory -i ansible/inventory/hosts.yml --graph
+ansible-inventory -i ansible/inventory/hosts.yml --list
+```
+
+Do not use the provisional 10.77.0.0/24 overlay until it is formally approved and checked for overlap.
+
+## Step 9 — Generate secrets and keys safely
+
+All generated values below are secrets unless labeled public. Store the private outputs in an approved password manager or encrypted vault. Never send them in chat, email, tickets, screenshots, shell history, or Git commits.
+
+### Strong random passwords (24+ characters)
+
+On a trusted Linux/macOS terminal:
+
+```bash
+# Generate an individual random password (copy it directly into secure storage)
+openssl rand -base64 32
+```
+
+Generate separate values for Grafana administrator, each host's metrics user, each host's logs user, and the Ansible Vault password. Do not reuse a password across hosts or purposes.
+
+### WireGuard keypair for each host
+
+Install `wireguard-tools` (Step 6). For each host, create a private/public keypair:
+
+```bash
+umask 077
+wg genkey | tee wg-private.key | wg pubkey > wg-public.key
+chmod 600 wg-private.key
+```
+
+- `wg-private.key`: **secret**, never put it in inventory or Git.
+- `wg-public.key`: public key; put the value in the relevant inventory host variable.
+- Create a unique keypair for central and every remote host.
+- Avoid creating key material on a shared/public computer. Securely store the private key with host identity.
+- The implementation expects controller environment variables named `OBSTACK_WG_PRIVATE_KEY_<HOST>`, where the inventory alias is uppercase and punctuation (such as hyphen) becomes underscore. Example alias `pilot-amd64` becomes `OBSTACK_WG_PRIVATE_KEY_PILOT_AMD64`.
+
+The current project reads the WireGuard private keys and host telemetry passwords from the Ansible controller's environment. It does not yet provide a fully automated secrets-manager integration.
+
+## Step 10 — Secret inventory (what is needed and when)
+
+The table is the master checklist. A secret is added to GitHub only for the workflow that requires it; local Ansible runs use environment variables. Values are not to be placed in tracked files.
+
+| Secret / value | Example naming | Purpose / stage | Where it is consumed |
+|---|---|---|---|
+| Grafana admin username | `OBSTACK_GRAFANA_ADMIN_USER` | Central setup/release | Controller environment; GitHub production environment secret |
+| Grafana admin password (24+ chars) | `OBSTACK_GRAFANA_ADMIN_PASSWORD` | Central setup/release | Controller environment; GitHub production environment secret |
+| Ansible Vault password | `OBSTACK_ANSIBLE_VAULT_PASSWORD` | Release workflow / Vault | GitHub production environment secret; local vault password file |
+| SSH deploy private key | `OBSTACK_DEPLOY_SSH_PRIVATE_KEY` | CI release deployment | GitHub production environment secret; matches central host's authorized key |
+| Production Ansible inventory YAML | `OBSTACK_ANSIBLE_INVENTORY` | CI release deployment | GitHub production environment secret; complete inventory document |
+| WireGuard private key for central | `OBSTACK_WG_PRIVATE_KEY_OBSTACK_CENTRAL` (alias-dependent) | WireGuard setup | Controller environment only |
+| WireGuard private key for each remote | `OBSTACK_WG_PRIVATE_KEY_<HOST>` | WireGuard setup | Controller environment only |
+| Metrics password per host (24+ chars) | `OBSTACK_ALLOY_METRICS_PASSWORD_<HOST>` | Central Nginx auth + Alloy stage | Controller environment; must be securely held in Vault |
+| Logs password per host (24+ chars) | `OBSTACK_ALLOY_LOGS_PASSWORD_<HOST>` | Central Nginx auth + Alloy stage | Controller environment; must be securely held in Vault |
+| Optional Alertmanager webhook URL | `OBSTACK_ALERTMANAGER_WEBHOOK_URL` | Alert delivery | Controller environment; endpoint token is embedded in URL, protect it as a secret |
+| Grafana Compose local env | `GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD` | Local/central Compose configuration | Root-only `.env` on central host; do not commit |
+
+**Public, non-secret but sensitive infrastructure values:** VPC/subnet CIDRs, WireGuard addresses, host public IPs, public WireGuard keys, inventory aliases, SSH admin CIDR. Treat these as internal infrastructure data and redact them in public screenshots.
+
+### GitHub repository/environment secrets (release pipeline)
+
+1. Open the repository on GitHub.
+2. Settings → **Environments** → create or open the environment named `production`.
+3. Add the five release secrets listed above: inventory, SSH private key, Ansible Vault password, Grafana username and Grafana password.
+4. Restrict the production environment to approved deployment branches/tags and configure required reviewers if your GitHub plan/settings support it.
+5. Settings → Secrets and variables → Actions can be used for repository-level secrets if the project is configured to read them there, but prefer the `production` environment for deployment credentials.
+6. Never paste secret values into screenshots. A screenshot should show only the secret names, not their values.
+
+**Important current implementation note:** the release workflow checks these five secrets. WireGuard and per-host telemetry secrets are consumed by Ansible playbooks from controller environment variables, and must be deliberately wired into the approved deployment process before those stages are run. Do not assume adding them in GitHub alone makes them available to the workflow.
+
+## Step 11 — Run read-only checks before changing any server
 
 From the repository root, activate the Python virtual environment, then:
 
