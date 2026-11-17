@@ -1,0 +1,34 @@
+---
+schema_version: 2
+application: ensams
+environment: null  # Operator: use the protected APP_ENV value.
+inventory_host: null  # Operator: exact key from ansible/inventory/hosts.yml.
+enabled: false  # Requires owner and network approvals in readiness docs.
+metrics:
+  enabled: false  # WireGuard bind and source are unverified.
+  target_address: null  # Verified WireGuard address and reserved host port.
+  path: /metrics
+  interval: 30s
+  timeout: 10s
+  access: private_wireguard
+health:
+  enabled: false  # Supply approved URL and TLS policy before enabling.
+  url: null  # Verified probe URL and approved TLS policy.
+  meaning: liveness
+logs:
+  enabled: false
+  method: none  # No remote log method is approved or implemented.
+host_monitoring:
+  enabled: false
+  method: none  # Agent deployment and health reporting are not implemented.
+blackbox:
+  enabled: false
+dashboards:
+  source_repository: application
+  source_files:
+    - iac/docker/ensams-prod/infra/grafana/dashboards/ensams-services.json
+    - iac/docker/ensams-prod/infra/grafana/dashboards/ensams-application-logs.json
+alerts:
+  source_repository: application
+  source_file: iac/docker/ensams-prod/infra/prometheus/alert.rules.yml
+migration_stage: discovery

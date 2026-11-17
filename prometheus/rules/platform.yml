@@ -2,7 +2,7 @@ groups:
   - name: obstack-platform
     rules:
       - alert: PrometheusTargetMissing
-        expr: up == 0
+        expr: up{job!="application-metrics"} == 0
         for: 5m
         labels:
           severity: warning
@@ -10,6 +10,32 @@ groups:
         annotations:
           summary: "Prometheus target is unavailable"
           description: "Target {{ $labels.job }} / {{ $labels.instance }} has been down for more than 5 minutes."
+
+      - alert: ApplicationHealthProbeFailed
+        expr: probe_success{job="blackbox"} == 0
+        for: 3m
+        labels:
+          severity: warning
+          category: application-availability
+        annotations:
+          summary: "Application health endpoint is unavailable"
+          description: >-
+            The {{ $labels.application }} health endpoint on {{ $labels.host }}
+            has failed for 3 minutes. This endpoint reports liveness only, not
+            dependency readiness.
+
+      - alert: ApplicationMetricsTargetUnavailable
+        expr: up{job="application-metrics"} == 0
+        for: 3m
+        labels:
+          severity: warning
+          category: telemetry
+        annotations:
+          summary: "Application metrics target is unavailable"
+          description: >-
+            Prometheus cannot scrape {{ $labels.application }} on {{ $labels.host }}.
+            Check the WireGuard path, host firewall, endpoint allowlists and
+            application listener.
 
       - alert: PrometheusConfigReloadFailed
         expr: prometheus_config_last_reload_successful == 0

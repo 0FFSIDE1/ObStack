@@ -31,6 +31,8 @@ flowchart TB
 
 The overlay 10.77.0.0/24 and hub address are provisional. The final VPC CIDR and all route-overlap checks must be completed before assigning addresses. The diagram represents the selected logical topology, not actual IP assignments or live connections.
 
+The central Nginx ingestion endpoints and remote Alloy starter config do not mean remote sources are active. No application is currently enabled, `applications/policy.yml` has no approved WireGuard CIDR, and remote log/host collection is explicitly disabled until its source and privilege model are implemented. Application metrics scrape targets are generated only after network approval.
+
 ## Required ports
 
 ### Central host inbound

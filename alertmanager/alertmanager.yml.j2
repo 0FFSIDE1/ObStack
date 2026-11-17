@@ -2,7 +2,7 @@ global:
   resolve_timeout: 5m
 route:
   receiver: {% if obstack_alertmanager_webhook_url | default('') | length > 0 %}obstack-webhook{% else %}default-sink{% endif %}
-  group_by: ["alertname", "project", "environment", "server"]
+  group_by: ["alertname", "project", "environment", "server", "application", "host"]
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 4h
@@ -19,4 +19,4 @@ inhibit_rules:
       - severity="critical"
     target_matchers:
       - severity="warning"
-    equal: ["alertname", "project", "environment", "server"]
+    equal: ["alertname", "project", "environment", "server", "application", "host"]

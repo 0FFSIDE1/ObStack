@@ -20,12 +20,15 @@ The repository implementation is merged into `main`.
 - Prometheus target retention is configured for 30 days with a 3 GB TSDB size cap; Loki retention is configured for 20 days.
 - Grafana datasources and a baseline central platform overview dashboard are provisioned from files.
 - Prometheus rules alert on unavailable scrape targets, failed configuration reloads and TSDB storage nearing its configured cap; host filesystem headroom alerts still require host-level metrics.
+- Remote application registrations under `applications/` generate committed Prometheus file-SD targets only for literal IPs inside the centrally approved WireGuard CIDR. The approved CIDR and ENSAMS targets remain unset until network review is complete.
 - Alertmanager supports optional HTTPS webhook delivery using the controller environment variable `OBSTACK_ALERTMANAGER_WEBHOOK_URL`; unset means no notification delivery (sink receiver).
 - Ansible includes read-only discovery, gated central provisioning, WireGuard hub/spoke provisioning, CA distribution and read-only central validation.
 
-CI validates Ansible, Compose, Nginx, Prometheus, Alertmanager, Loki, Blackbox Exporter and Grafana provisioning/dashboard assets. A passing CI run is not evidence of deployed runtime behavior.
+CI validates the application schema and registrations, generated targets/rules, approved WireGuard network enforcement, Python tests, secret scanning, Ansible, Alloy configuration and image architectures, Compose, Nginx, Prometheus, Alertmanager, Loki, Blackbox Exporter and Grafana provisioning/dashboard assets. A passing CI run is not evidence of deployed runtime behavior.
 
 See [implementation status](docs/implementation-status.md), [architecture](docs/architecture.md), [network architecture](docs/network-architecture.md), [telemetry ingestion](docs/telemetry-ingestion.md), [implementation plan](docs/implementation-plan.md), [operations guide](docs/operations/ports-capacity-failure-modes.md), [threat model](docs/security/threat-model.md) and [preliminary ISO/IEC 27002 mapping](docs/security/iso-27002-2022-preliminary-mapping.md).
+
+For app enrollment, see [remote application onboarding](docs/remote-application-onboarding.md), [remote telemetry architecture](docs/remote-telemetry-architecture.md), and the [ENSAMS migration readiness](docs/integrations/ensams-migration-readiness.md) record.
 
 ## Local configuration checks
 

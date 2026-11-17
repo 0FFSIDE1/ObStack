@@ -13,6 +13,8 @@ on:
       - "grafana/**"
       - "loki/**"
       - "prometheus/**"
+      - "applications/**"
+      - "scripts/validate_applications.py"
       - "nginx/**"
       - ".github/workflows/ansible-validation.yml"
       - ".github/workflows/wireguard-preflight-approval.yml"
@@ -44,6 +46,60 @@ jobs:
           python -m pip install --upgrade pip
           pip install ansible-core==2.18.6 ansible-lint==25.9.0
           ansible-galaxy collection install -r ansible/requirements.yml
+      - name: Validate rendered Alloy configuration
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from jinja2 import Environment
+
+          source = Path("ansible/roles/alloy/templates/config.alloy.j2")
+          values = {
+              "inventory_hostname": "ci-host",
+              "obstack_alloy_remote_write_url": (
+                  "https://obstack.invalid/api/v1/write"
+              ),
+              "obstack_alloy_loki_url": (
+                  "https://obstack.invalid/loki/api/v1/push"
+              ),
+              "obstack_alloy_metrics_username": "ci-metrics",
+              "obstack_alloy_logs_username": "ci-logs",
+              "obstack_alloy_ca_file": "/etc/ssl/certs/obstack-ca.crt",
+              "obstack_alloy_tenant_id": "obstack",
+              "obstack_server_role": "server",
+              "obstack_region": "ci",
+              "project": "example",
+              "environment": "staging",
+          }
+          template = Environment(autoescape=False).from_string(
+              source.read_text()
+          )
+          rendered = template.render(**values)
+          Path("/tmp/obstack-config.alloy").write_text(rendered)
+          PY
+          docker run --rm --platform linux/amd64 --entrypoint /bin/alloy \
+            -v /tmp/obstack-config.alloy:/tmp/config.alloy:ro \
+            grafana/alloy:v1.22.0 validate \
+            --stability.level=generally-available /tmp/config.alloy
+      - name: Verify Alloy image supports remote host architectures
+        run: |
+          docker buildx imagetools inspect --raw grafana/alloy:v1.22.0 \
+            > /tmp/alloy-image-manifest.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(Path("/tmp/alloy-image-manifest.json").read_text())
+          platforms = {
+              f"{entry['platform']['os']}/{entry['platform']['architecture']}"
+              for entry in manifest.get("manifests", [])
+              if "platform" in entry
+          }
+          required = {"linux/amd64", "linux/arm64"}
+          missing = required - platforms
+          if missing:
+              raise SystemExit(f"Alloy image lacks required platforms: {sorted(missing)}")
+          print(f"Verified Alloy platforms: {sorted(required)}")
+          PY
       - name: Validate all Ansible playbook syntax
         run: |
           set -euo pipefail
